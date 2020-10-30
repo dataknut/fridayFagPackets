@@ -1,0 +1,45 @@
+---
+params:
+  subtitle: ""
+  title: ""
+  authors: ""
+title: '`r params$title`'
+subtitle: '`r params$subtitle`'
+author: '`r params$authors`'
+date: 'Last run at: `r Sys.time()`'
+output:
+  bookdown::html_document2:
+    self_contained: true
+    fig_caption: yes
+    code_folding: hide
+    number_sections: yes
+    toc: yes
+    toc_depth: 2
+    toc_float: TRUE
+  bookdown::pdf_document2:
+    fig_caption: yes
+    number_sections: yes
+  bookdown::word_document2:
+    fig_caption: yes
+    number_sections: yes
+    toc: yes
+    toc_depth: 2
+    fig_width: 5
+bibliography: '`r path.expand("~/github/dataknut/refs/refs.bib")`'
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(data.table)
+
+```
+
+# R packages used
+
+ * rmarkdown [@rmarkdown]
+ * bookdown [@bookdown]
+ * knitr [@knitr]
+ * data.table [@data.table]
+ 
+# References
