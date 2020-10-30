@@ -1,6 +1,31 @@
 ---
-title: "Retrofit or bust?"
-output: html_document
+params:
+  subtitle: ""
+  title: ""
+  authors: ""
+title: '`r params$title`'
+subtitle: '`r params$subtitle`'
+author: '`r params$authors`'
+date: 'Last run at: `r Sys.time()`'
+output:
+  bookdown::html_document2:
+    self_contained: true
+    fig_caption: yes
+    code_folding: hide
+    number_sections: yes
+    toc: yes
+    toc_depth: 2
+    toc_float: TRUE
+  bookdown::pdf_document2:
+    fig_caption: yes
+    number_sections: yes
+  bookdown::word_document2:
+    fig_caption: yes
+    number_sections: yes
+    toc: yes
+    toc_depth: 2
+    fig_width: 5
+bibliography: '`r path.expand("~/github/dataknut/refs/refs.bib")`'
 ---
 
 ```{r setup, include=FALSE}
@@ -70,6 +95,24 @@ Intriguingly this is exactly what N[ew Zealand’s Ministry of Business, Innovat
 
 # Detailed tables
 
-# Admission
+We did the original analysis in the excel workbooks we downloaded from gov.uk. You can find them [here](https://git.soton.ac.uk/SERG/fridayfun/-/blob/master/2020-10-16-retrofOrBust/2018_EHS_Energy_Chapter_3_Figures_and_Annex_Tables.xlsx) (Tab: AT3.4 Edited). Hey, no-one's perfect.
 
-We did the original analysis in the excel workbooks we downloaded from gov.uk. You can find them here (Tab: AT3.4 Edited). Hey, no-one's perfect.
+![Table 1](T1.png)
+
+>Table 1: Adapted from EHS 2018 Report: Annex Table 1.5: Average modelled energy costs, by dwelling characteristics, 2018 (with additional total column, over-precision retained for hilarity)
+
+![Table 2](T2.png)
+
+>Table 2: Estimated retrofit costs and % energy savings (over-precision retained for hilarity)
+
+![Table 3](T3.png)
+
+>Table 3: Current estimated energy costs and estimated retrofit costs by tenure (EHS 2018 Report Table AT1.2, own calculations as for Table 2, over-precision retained for hilarity))
+
+# R packages used
+
+ * rmarkdown [@rmarkdown]
+ * bookdown [@bookdown]
+ * knitr [@knitr]
+ 
+# References
