@@ -28,6 +28,11 @@ output:
 bibliography: '`r path.expand("~/github/dataknut/refs/refs.bib")`'
 ---
 
+<hr>
+
+>This frdayFun note was first published as a [blog](https://dataknut.wordpress.com/2020/10/16/retrofit-or-bust/)
+
+<hr>
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
@@ -73,7 +78,8 @@ If we:
 …then if we invest ~£332bn we get a £22.5 – £10 = £12bn (55%) energy cost reduction (Figure 1 & Table 2 below). As you’d expect we see the biggest improvement costs and absolute savings in the bands with the most dwellings (C & D) but the biggest % savings in F & G. 
 
 ![Estimated current energy costs, post-improvement costs and % reduction for English dwellings](Fig1.png)
-Figure 1: Estimated current energy costs, post-improvement costs and % reduction for English dwellings (EHS 2018, own calculations, see Table below for detail)
+
+>Figure 1: Estimated current energy costs, post-improvement costs and % reduction for English dwellings (EHS 2018, own calculations, see Table below for detail)
 
 Remember the £3.8bn [Social Housing Decarbonisation Fund](https://www.housing.org.uk/news-and-blogs/news/chancellors-statement-and-affordable-homes-programme/)? Well according to the EHS 2018 social housing is already leading the way with 56% of them in bands A-C compared to under 30% of owner-occupied. As a result if we ignore the A-Cs then we ‘only’ need to invest £24bn in social housing retrofits for the 1.79m D-G dwellings (see Table 3 below). If we include the A-Cs (the published tables don’t give a A/B/C breakdown) it’s a £54bn investment. On these numbers, £3.8bn a year for 10 years might see this sector home…
 

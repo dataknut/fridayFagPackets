@@ -4,8 +4,7 @@ makeReport <- function(f){
                     params = list(title = title,
                                   subtitle = subtitle,
                                   authors = authors),
-                    output_file = paste0(here::here("docs/"), f, ".html"),
-                    output_format = "html_document"
+                    output_file = paste0(here::here("docs/"), f, ".html")
   )
   # word
   rmarkdown::render(input = paste0(here::here("2020-10-16-retrofOrBust", f), ".Rmd"),
