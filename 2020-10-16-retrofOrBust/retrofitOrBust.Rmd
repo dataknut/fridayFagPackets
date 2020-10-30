@@ -1,0 +1,70 @@
+---
+title: "Retrofit or bust?"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+It seems like we can’t snooze for a second without HM Govt announcing another ‘build back better’ initiative. The sentiment behind these is totally to be applauded: invest public £ in job (and skill) creating schemes which help fix our [energy inefficient homes](https://www.theccc.org.uk/publication/uk-housing-fit-for-the-future/) thereby reducing energy demand (and carbon emissions), increasing thermal comfort and reducing poor health outcomes. Win4.
+
+Schemes seen to date include:
+
+ * £2 billion [Green Homes Grant](https://www.gov.uk/guidance/apply-for-the-green-homes-grant-scheme): make energy improvements to your home insulation & low carbon heat vouchers
+ * £50 million [Social Housing Decarbonisation Fund Demonstrator](https://www.gov.uk/government/publications/social-housing-decarbonisation-fund-demonstrator) (SHDF Demonstrator) in prep for the future
+ * £3.8 billion [Social Housing Decarbonisation Fund](https://www.housing.org.uk/news-and-blogs/news/chancellors-statement-and-affordable-homes-programme/)
+
+These sound like big numbers.
+
+But how much is it really going to cost to bring our homes up to standard, assuming we can even agree what standard is required for our [greenhouse gas emissions reduction objectives](https://www.theccc.org.uk/publication/uk-housing-fit-for-the-future/)?
+
+# Ballparks
+
+If we want a very ‘[back of a fag packet](https://www.collinsdictionary.com/submission/11813/back+of+a+fag+packet)‘ estimate for England we can start with the excellent research provided by the English [Housing Survey 2018](https://www.gov.uk/government/statistics/english-housing-survey-2018-energy-report) reports.
+
+# How big is the problem?
+
+Pretty big.
+
+[Table AT1.5](https://assets.publishing.service.gov.uk/government/uploads/system/uploads/attachment_data/file/898341/Energy_Chapter_1_Figures_and_Annex_Tables.xlsx) gives us the number of dwellings and the average SAP-modelled annual energy cost by EPC band. Note that modelled energy cost includes space heating, cooling and hot water but not appliances.
+
+A quick calculation (see Table 1 below) shows that:
+
+ * we spend an estimated £22.5 bn a year on (this kind of) energy in English dwellings;
+ * **we currently have about 15 million dwellings rated D-G that need ‘fixing’ if band C is our ‘standard to be met’**;
+ * and possibly another 8 million rated C which might also need a fix.
+
+To get even the 15 million D-G over the line by 2050 means fixing 10,000 or more a week for the next 30 years. Go us.
+What about the costs?
+
+Very helpfully [Table AT3.4](https://assets.publishing.service.gov.uk/government/uploads/system/uploads/attachment_data/file/898343/Energy_Chapter_3_Figures_and_Annex_Tables.xlsx) in Chapter 3 of the same report provides some remarkably over-precise average ‘upgrade‘ costs for bands A-E (£13,347) and F&G (£26.891). The table also gives us equally precise ‘post-improvement notional total energy current cost (£/yr)‘ of £415 (band A-E) and £515 (bands F & G).
+
+If we:
+
+ * assume that band A/B dwellings don’t need and don’t get a fix (possibly untrue) and…
+ ( the retrofit costs and annual post-improvement energy costs are constant within C-E and F & G as above (almost certainly untrue but hey, it’s an average…)
+
+…then if we invest ~£332bn we get a £22.5 – £10 = £12bn (55%) energy cost reduction (Figure 1 & Table 2 below). As you’d expect we see the biggest improvement costs and absolute savings in the bands with the most dwellings (C & D) but the biggest % savings in F & G. 
+
+Figure 1: Estimated current energy costs, post-improvement costs and % reduction for English dwellings (EHS 2018, own calculations, see Table below for detail)
+
+Remember the £3.8bn [Social Housing Decarbonisation Fund](https://www.housing.org.uk/news-and-blogs/news/chancellors-statement-and-affordable-homes-programme/)? Well according to the EHS 2018 social housing is already leading the way with 56% of them in bands A-C compared to under 30% of owner-occupied. As a result if we ignore the A-Cs then we ‘only’ need to invest £24bn in social housing retrofits for the 1.79m D-G dwellings (see Table 3 below). If we include the A-Cs (the published tables don’t give a A/B/C breakdown) it’s a £54bn investment. On these numbers, £3.8bn a year for 10 years might see this sector home…
+
+Privately rented dwellings are in the same ball park – £46bn or £68bn depending if we include A-C. But the big problem is the 15.2m (63%) owner occupied homes of whom 70% are in band D-G. If we ignore the A-Cs someone needs to find £154bn for this sector and £214bn if we include them. Given emerging evidence on [why owners don’t improve their dwellings](https://onlinelibrary.wiley.com/doi/full/10.1111/1753-6405.12895) this is going to be the big one.
+
+# In sum
+
+Is all this enough to hit our carbon targets? Getting all dwellings up to A/B standard is one approach and it should mean we have a lot less heat energy to decarbonise. Scarily for some, £12bn would also be quite a big chunk out of the retail energy sector’s annual turnover.
+
+To be sure, £332 bn sounds a lot but remember that the annual English NHS budget is [~£130 bn and rising](https://fullfact.org/health/spending-english-nhs/) in a ‘normal’ year. In contrast, according to our fag packet we ‘just’ need to invest £11bn a year (at current prices) for 30 years in dwelling improvements. This co-incidentally also helps to [reduce the NHS budget](https://jech.bmj.com/content/63/4/271.short?casa_token=QjmF0S0mRK4AAAAA:PH24tAPvDC7teVFPiOSwxksd2ZjSD91XTLV4rpZCl5DefSUWO_oPmfVlDa-uZjhKCdsRyaUEXxk) through improved health co-benefits. Ideally of course we’d want a front-loaded investment to ‘build back better’, help us deliver quickly on our [COP commitments](https://www.gov.uk/government/topical-events/cop26) and [regain at least some moral high ground](https://www.theccc.org.uk/publication/reducing-uk-emissions-2020-progress-report-to-parliament/).
+
+# But are we barking up the wrong tree?
+
+However for reasons that are excellently explained in a recent [PassivHaus Trust report](https://www.passivhaustrust.org.uk/guidance_detail.php?gId=44), focusing on EPC bands might be a red herring. This is because ‘high’ EPC bands can be met by installing on-site low carbon generation (e.g. PV) without having to reduce energy inputs and the EPC rating uses energy-input carbon intensity values that are rapidly out of date, especially for electricity. As a result as ‘the carbon emissions associated with expensive electricity continue to reduce, this makes the EPC rating system increasingly inaccurate and means that a highly rated dwelling could potentially produce a very high rate of emissions‘ (p11).
+
+The Trust instead recommends a focus on space conditioning energy intensity (kWh/m2) as a primary metric. This would mean deciding what kWh/m2 standards we want to hit and devising policy settings and support mechanisms to enable the industry to deliver them at speed and scale.
+
+Intriguingly this is exactly what N[ew Zealand’s Ministry of Business, Innovation and Employment (MBIE)](https://www.mbie.govt.nz/dmsdocument/11793-transforming-operational-efficiency) is currently consulting on with respect to new build dwellings as part of their Building for Climate Change: Transforming operational efficiency and reducing whole-of-life embodied carbon programme. Watch this space.
+
+# Detailed tables
