@@ -172,18 +172,20 @@ sotonEpcMSOA_DT <- sotonPostcodesDT[, .(nEPCs = .N,
                                     ] 
 ```
 
-```{r, compareEstimates}
+Join the estimates together at MSOA level for comparison. There are `r uniqueN(sotonElecDT$MSOACode)` MSOAs in Southampton.
 
+```{r, compareEpcEstimates}
+# 32 LSOAs in Soton
 # add deprivation
 setkey(sotonElecDT, MSOACode)
 setkey(deprivationDT,MSOACode)
-setkey(sotonMSOA_DT,MSOACode)
 sotonMSOA_DT <- deprivationDT[sotonElecDT]
 sotonMSOA_DT <- sotonDep_DT[sotonMSOA_DT]
 
 
 t <- sotonMSOA_DT[, .(nHouseholds2011 = sum(totalHouseholds),
                       nElecMeters2018 = sum(METERS),
+                      nEPCs = sum(),
                       sumMWh = sum(KWH)/1000)]
 
 kableExtra::kable(t, caption = "Comparison of different estimates of the number of dwellings")
