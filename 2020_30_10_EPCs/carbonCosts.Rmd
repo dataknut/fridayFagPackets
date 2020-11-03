@@ -32,8 +32,326 @@ bibliography: '`r path.expand("~/github/dataknut/refs/refs.bib")`'
 knitr::opts_chunk$set(echo = TRUE)
 
 library(data.table)
+library(ggplot2)
+library(kableExtra)
+```
+
+# Energy Performance Certificates (EPCs)
+
+Apart from a few exempted buildings, a dwelling must have an EPC when constructed, sold or let. This means that over time we will have an EPC for an increasing number of properties and we should _already_ have EPCs for all rented properties.
+
+EPCs are not necessarily up to date. For example if a property has not been sold or let since a major upgrade, the effects of that upgrade may not be visible in the data.
+
+> check what feeds in automatically e.f. RGI installs etc
+
+We have to assume the data we have is the _current state of play_ for these dwellings.
+
+# Southampton EPCs
+
+```{r, loadSoton}
+df <- path.expand("~/data/EW_epc/domestic-E06000045-Southampton/certificates.csv")
+alldt <- data.table::fread(df)
+```
+
+The EPC data file has `r nrow(alldt)` records for Southampton and `r ncol(alldt)` variables. We're not interested in all of these, we want:
+
+ * PROPERTY_TYPE: Describes the type of property such as House, Flat, Maisonette etc. This is the type differentiator for dwellings;
+ * BUILT_FORM: The building type of the Property e.g. Detached, Semi-Detached, Terrace etc. Together with the Property Type, the Build Form produces a structured description of the property;
+ * ENVIRONMENT_IMPACT_CURRENT: A measure of the property's current impact on the environment in terms of carbon dioxide (CO₂) emissions. The higher the rating the lower the CO₂ emissions. (CO₂ emissions in tonnes / year) **NB this is a categorised scale calculated from CO2_EMISSIONS_CURRENT**;
+ * ENERGY_CONSUMPTION_CURRENT: Current estimated total energy consumption for the property in a 12 month period (kWh/m2). Displayed on EPC as the current primary energy use per square metre of floor area. **Nb: this covers heat and hot water (and lightng?)**
+ * CO2_EMISSIONS_CURRENT: CO₂ emissions per year in tonnes/year **NB: this is calculated from the modelled kWh energy input using (possibly) outdated carbon intensity values**;
+ * TENURE: Describes the tenure type of the property. One of: Owner-occupied; Rented (social); Rented (private).
+ 
+ We're also going to keep:
+ 
+  * WIND_TURBINE_COUNT: Number of wind turbines; 0 if none;
+  * PHOTO_SUPPLY: Percentage of photovoltaic area as a percentage of total roof area. 0% indicates that a Photovoltaic Supply is not present in the property;
+  * TOTAL_FLOOR_AREA: The total useful floor area is the total of all enclosed spaces measured to the internal face of the external walls, i.e. the gross floor area as measured in accordance with the guidance issued from time to time by the Royal Institute of Chartered Surveyors or by a body replacing that institution. (m²);
+  * POSTCODE - to allow linkage to other datasets
+  
+These may indicate 'non-grid' energy inputs.
+ 
+If an EPC has been updated or refreshed, the EPC dataset will hold multiple EPC records for that property. We will just select the most recent. 
+
+```{r, checkData}
+# select just these vars
+dt <- alldt[, .(BUILDING_REFERENCE_NUMBER, LMK_KEY, LODGEMENT_DATE, PROPERTY_TYPE, BUILT_FORM,
+                ENVIRONMENT_IMPACT_CURRENT, ENERGY_CONSUMPTION_CURRENT, CO2_EMISSIONS_CURRENT, TENURE,
+                PHOTO_SUPPLY, WIND_TURBINE_COUNT, TOTAL_FLOOR_AREA, POSTCODE)]
+
+# select most recent record within BUILDING_REFERENCE_NUMBER - how?
+# better check this is doing so
+setkey(dt,BUILDING_REFERENCE_NUMBER, LODGEMENT_DATE) # sort by date within reference number
+uniqueDT <- unique(dt, by = "BUILDING_REFERENCE_NUMBER",
+                   fromLast = TRUE) # which one does it take?
+test1 <- alldt[, .(min1 = min(LODGEMENT_DATE), nRecords = .N), keyby = .(BUILDING_REFERENCE_NUMBER)]
+test2 <- uniqueDT[, .(min2 = min(LODGEMENT_DATE)), keyby = .(BUILDING_REFERENCE_NUMBER)]
+t <- test1[test2]
+t[, diff := min2 - min1]
+
+summary(t[nRecords > 1]) # diff is always >= 0 so min2 (after unique) is always > min1
+# confirms fromLast = TRUE has selected the most recent within BUILDING_REFERENCE_NUMBER
+
+skimr::skim(uniqueDT)
+```
+
+As we can see that we have `r uniqueN(dt$BUILDING_REFERENCE_NUMBER)` unique property reference numbers. We can also see some strangeness. In some cases we seem to have:
+ 
+ * negative energy consumption;
+ * negative emissions;
+ * 0 floor area
+
+This is not surprising since the kWh/y and TCO2/y values are estimated using a model but before we go any further we'd better check if these are significant in number.
+
+## Check missing property rates
+
+First we'll use the BEIS 2018 MSOA level annual electricity data to estimate the number of meters (not properties) - some addresses can have 2 meters (e.g. standard & economy 7). This is more useful than the number of gas meters since not all dwellings have mains gas but all have an electricity meter.
+
+```{r, checkBEIS}
+beisElecDT <- data.table::fread("~/data/beis/MSOA_DOM_ELEC_csv/MSOA_ELEC_2018.csv")
+sotonElecDT <- beisElecDT[LAName %like% "Southampton"]
+sotonElecDT[, .(nElecMeters = sum(METERS),
+                sumkWh = sum(KWH)), keyby = .(LAName)]
+```
+
+Next we'll check for the number of households reported by the 2011 Census.
+
+> would be better to use dwellings
+
+```{r, checkCensus}
+#censusDT <- data.table::fread(path.expand("~/data/"))
+
+deprivationDT <- data.table::fread(path.expand("~/data/census2011/2011_MSOA_deprivation.csv"))
+deprivationDT[, totalHouseholds := `Household Deprivation: All categories: Classification of household deprivation; measures: Value`]
+deprivationDT[, MSOACode := `geography code`]
+setkey(deprivationDT, MSOACode)
+setkey(sotonElecDT, MSOACode)
+# link LA name from Soton
+sotonDep_DT <- deprivationDT[sotonElecDT[, .(MSOACode, LAName)]]
+
+sotonDep_DT[, .(nHouseholds = sum(totalHouseholds)), keyby = .(LAName)]
+```
+
+That's lower (as expected) but doesn't allow for dwellings that were empty on census night.
+
+```{r, checkPostcodes}
+# Postcodes don't help - no count of addresses in the data (there used to be??)
+soPostcodesDT <- data.table::fread(path.expand("~/data/UK_postcodes/NSPL_AUG_2020_UK/Data/multi_csv/NSPL_AUG_2020_UK_SO.csv"))
+
+soPostcodesDT <- soPostcodesDT[!is.na(doterm)] # keep current
+
+sotonPostcodesDT <- soPostcodesDT[laua == "E06000045"] # keep Southampton City
+
+uniqueDT[, epcIsSocialRent := ifelse(TENURE == "rental (social)", 1, 0)]
+uniqueDT[, epcIsPrivateRent := ifelse(TENURE == "rental (private)", 1, 0)]
+uniqueDT[, epcIsOwnerOcc := ifelse(TENURE == "owner-occupied", 1, 0)]
+uniqueDT[, epcIsUnknownTenure := ifelse(TENURE == "NO DATA!" |
+                                          TENURE == "" , 1, 0)]
+
+sotonEpcPostcodes_DT <- uniqueDT[, .(nEPCs = .N,
+                                     n_epcIsSocialRent = sum(epcIsSocialRent, na.rm = TRUE),
+                                     n_epcIsPrivateRent = sum(epcIsPrivateRent, na.rm = TRUE),
+                                     n_epcIsOwnerOcc = sum(epcIsOwnerOcc, na.rm = TRUE),
+                                     n_epcIsUnknownTenure = sum(epcIsUnknownTenure, na.rm = TRUE),
+                               sumMWh = sum(ENERGY_CONSUMPTION_CURRENT)/1000),
+                           keyby = .(POSTCODE)]
+
+setkey(sotonEpcPostcodes_DT, POSTCODE)
+setkey(sotonPostcodesDT, pcd)
+
+sotonPostcodesDT <- sotonEpcPostcodes_DT[sotonPostcodesDT]
+
+sotonEpcMSOA_DT <- sotonPostcodesDT[, .(nEPCs = .N, 
+                                        n_epcIsSocialRent = sum(n_epcIsSocialRent),
+                                        n_epcIsPrivateRent = sum(n_epcIsPrivateRent),
+                                        n_epcIsOwnerOcc = sum(n_epcIsOwnerOcc),
+                                        n_epcIsUnknownTenure = sum(n_epcIsUnknownTenure),
+                                        sumMWh = sum(sumMWh)
+                                        ),
+                                    keyby = .(MSOACode = msoa11) # change name on the fly for easier matching
+                                    ] 
+```
+
+```{r, compareEstimates}
+
+# add deprivation
+setkey(sotonElecDT, MSOACode)
+setkey(deprivationDT,MSOACode)
+setkey(sotonMSOA_DT,MSOACode)
+sotonMSOA_DT <- deprivationDT[sotonElecDT]
+sotonMSOA_DT <- sotonDep_DT[sotonMSOA_DT]
+
+
+t <- sotonMSOA_DT[, .(nHouseholds2011 = sum(totalHouseholds),
+                      nElecMeters2018 = sum(METERS),
+                      sumMWh = sum(KWH)/1000)]
+
+kableExtra::kable(t, caption = "Comparison of different estimates of the number of dwellings")
 
 ```
+
+## Check ENERGY_CONSUMPTION_CURRENT
+
+We recode the current energy consumption into categories for comparison with other low values and the presence of wind turbines/PV. We use -ve, 0 and 1 kWh as the thresholds of interest.
+
+
+```{r, checkEnergy, fig.cap="Histogram of ENERGY_CONSUMPTION_CURRENT"}
+
+ggplot2::ggplot(uniqueDT, aes(x = ENERGY_CONSUMPTION_CURRENT)) +
+  geom_histogram(binwidth = 5) + 
+  facet_wrap(~TENURE) +
+  geom_vline(xintercept = 0)
+
+underZero <- nrow(uniqueDT[ENERGY_CONSUMPTION_CURRENT < 0])
+
+t <- with(uniqueDT[ENERGY_CONSUMPTION_CURRENT < 0],
+     table(BUILT_FORM,TENURE))
+
+
+kableExtra::kable(t, caption = "Properties with ENERGY_CONSUMPTION_CURRENT < 0")
+
+# do we think this is caused by solar/wind?
+uniqueDT[, hasWind := ifelse(WIND_TURBINE_COUNT > 0, "Yes", "No")]
+#table(uniqueDT$hasWind)
+uniqueDT[, hasPV := ifelse(PHOTO_SUPPLY >0, "Yes", "No")]
+#table(uniqueDT$hasPV)
+uniqueDT[, consFlag := ifelse(ENERGY_CONSUMPTION_CURRENT < 0, "-ve kWh/y", NA)]
+uniqueDT[, consFlag := ifelse(ENERGY_CONSUMPTION_CURRENT == 0, "0 kWh/y", consFlag)]
+uniqueDT[, consFlag := ifelse(ENERGY_CONSUMPTION_CURRENT > 0 & 
+                                     ENERGY_CONSUMPTION_CURRENT <= 1, "0-1 kWh/y", consFlag)]
+uniqueDT[, consFlag := ifelse(ENERGY_CONSUMPTION_CURRENT > 1, "1+ kWh/y", consFlag)]
+
+t <- uniqueDT[, .(nObs = .N), keyby = .(consFlag, hasWind, hasPV)]
+
+kableExtra::kable(t, caption = "Properties in ENERGY_CONSUMPTION_CURRENT category by presence of microgeneration")
+
+```
+
+There are only `r underZero` dwellings where ENERGY_CONSUMPTION_CURRENT < 0 and none of them seem to have PV or a wind turbine so we can probably ignore them.
+
+```{r, energyTenure, fig.cap="Comparing distributions of ENERGY_CONSUMPTION_CURRENT by tenure and built form"}
+# repeat with a density plot to allow easy overlap 
+# exclude those with no data
+ggplot2::ggplot(uniqueDT[TENURE != "NO DATA!" &
+                           TENURE != "unknown" &
+                           TENURE != ""], aes(x = ENERGY_CONSUMPTION_CURRENT, 
+                                              fill = TENURE, alpha = 0.2)) +
+  geom_density() +
+  facet_wrap(~BUILT_FORM) +
+  guides(alpha = FALSE) +
+  theme(legend.position = "bottom")
+```
+
+## Check CO2_EMISSIONS_CURRENT
+
+Next we do the same for current emissions. Repeat the coding for total floor area using 0 and 1 TCO2/y as the threshold of interest.
+
+
+```{r, checkEmissions, fig.cap="Histogram of CO2_EMISSIONS_CURRENT"}
+ggplot2::ggplot(uniqueDT, aes(x = CO2_EMISSIONS_CURRENT)) +
+  geom_histogram(binwidth = 1)
+
+nZeroEmissions <- nrow(uniqueDT[CO2_EMISSIONS_CURRENT < 0])
+
+uniqueDT[, emissionsFlag := ifelse(CO2_EMISSIONS_CURRENT < 0, "-ve CO2/y", NA)]
+uniqueDT[, emissionsFlag := ifelse(CO2_EMISSIONS_CURRENT == 0, "0 CO2/y", emissionsFlag)]
+uniqueDT[, emissionsFlag := ifelse(CO2_EMISSIONS_CURRENT > 0 & 
+                                     CO2_EMISSIONS_CURRENT <= 1, "0-1 TCO2/y", emissionsFlag)]
+uniqueDT[, emissionsFlag := ifelse(CO2_EMISSIONS_CURRENT > 1, "1+ TCO2/y", emissionsFlag)]
+
+t <- uniqueDT[, .(nObs = .N), keyby = .(emissionsFlag, hasWind, hasPV)]
+
+kableExtra::kable(t, caption = "Properties with CO2_EMISSIONS_CURRENT < 0 by presence of microgeneration")
+
+kableExtra::kable(round(100*(prop.table(table(uniqueDT$emissionsFlag, 
+                                              uniqueDT$consFlag, 
+                                              useNA = "always")
+                                        )
+                             )
+                        ,2)
+                  , caption = "% properties in CO2_EMISSIONS_CURRENT categories by ENERGY_CONSUMPTION_CURRENT categories")
+
+```
+
+There are `r nZeroEmissions` properties with 0 or negative emissions. It looks like they are also the properties with -ve kWh as we might expect. So we can safely ignore them.
+
+## Check ENVIRONMENT_IMPACT_CURRENT
+
+`Environmental impact` should decrease as emissions increase.
+
+```{r, checkImpact, fig.cap="Histogram of ENVIRONMENT_IMPACT_CURRENT"}
+ggplot2::ggplot(alldt, aes(x = ENVIRONMENT_IMPACT_CURRENT)) +
+  geom_histogram()
+```
+
+So what is the relationship between ENVIRONMENT_IMPACT_CURRENT and CO2_EMISSIONS_CURRENT? It is not linear... (Figure \@ref(fig:checkEmissionsImpact)) and there are some interesting outliers.
+
+```{r, checkEmissionsImpact, fig.cap="PLot of ENVIRONMENT_IMPACT_CURRENT vs CO2_EMISSIONS_CURRENT"}
+
+ggplot2::ggplot(alldt, aes(x = CO2_EMISSIONS_CURRENT, 
+                           y = ENVIRONMENT_IMPACT_CURRENT,
+                           colour = TENURE)) +
+  geom_point() +
+  facet_wrap(TENURE~.) +
+  theme(legend.position = "bottom")
+```
+
+## Check TOTAL_FLOOR_AREA
+
+Repeat the coding for total floor area using 5 m2 as the threshold of interest.
+
+```{r, checkEmissions, fig.cap="Histogram of TOTAL_FLOOR_AREA"}
+ggplot2::ggplot(uniqueDT, aes(x = TOTAL_FLOOR_AREA)) +
+  geom_histogram(binwidth = 1)
+
+nZeroFloorArea <- nrow(uniqueDT[TOTAL_FLOOR_AREA < 0])
+
+uniqueDT[, floorFlag := ifelse(TOTAL_FLOOR_AREA == 0, "0 m2", NA)]
+uniqueDT[, floorFlag := ifelse(TOTAL_FLOOR_AREA > 0 & 
+                                     TOTAL_FLOOR_AREA <= 10, "0-5 m2", floorFlag)]
+uniqueDT[, floorFlag := ifelse(TOTAL_FLOOR_AREA > 10, "5+ m2", floorFlag)]
+
+t <- with(uniqueDT, table(floorFlag, consFlag))
+
+kableExtra::kable(round(100*prop.table(t),2), caption = "% properties with TOTAL_FLOOR_AREA category by ENERGY_CONSUMPTION_CURRENT category")
+
+kableExtra::kable(head(uniqueDT[, .(BUILDING_REFERENCE_NUMBER, PROPERTY_TYPE, TOTAL_FLOOR_AREA, 
+                                    ENERGY_CONSUMPTION_CURRENT)][order(-TOTAL_FLOOR_AREA)], 10), 
+                  caption = "Top 10 by floor area (largest)")
+
+kableExtra::kable(head(uniqueDT[, .(BUILDING_REFERENCE_NUMBER, PROPERTY_TYPE, TOTAL_FLOOR_AREA,
+                                    ENERGY_CONSUMPTION_CURRENT)][order(TOTAL_FLOOR_AREA)], 10), 
+                  caption = "Bottom 10 by floor area (smallest)")
+
+kableExtra::kable(round(100*prop.table(t),2), caption = "% properties with TOTAL_FLOOR_AREA category by ENERGY_CONSUMPTION_CURRENT category")
+
+```
+
+\@ref(tab:checkEmissions) shows that the properties with floor area of < 10m2 are not necessarily the ones with 0 or negative kWh values. Nevertheless they represent a small proportion of all properties.
+
+The scale of the x axis also suggests a few very large properties.
+
+## Data summary
+
+We have identified some issues with a small number of the properties in the EPC dataset. These are not unexpected given that much of the estimates rely on partial or presumed data. Data entry errors are also quite likely. As a result we exclude:
+
+ * any property where ENERGY_CONSUMPTION_CURRENT <= 0
+ * any property where TOTAL_FLOOR_AREA <= 5
+ * any property where CO2_EMISSIONS_CURRENT <= 0
+
+```{r, finalData}
+finalDT <- uniqueDT[ENERGY_CONSUMPTION_CURRENT > 0 &
+                      TOTAL_FLOOR_AREA > 5 &
+                      CO2_EMISSIONS_CURRENT > 0]
+
+skimr::skim(finalDT)
+```
+
+This leaves us with a total of `r prettyNum(nrow(finalDT), big.mark = ",")'` properties.
+`
+# Current estimated annual CO2 emmisions
+
+We can now use the cleaned data to estimated the annual CO2 emissions of all of these properties. Obviously this will not be the total CO2 emissions for **all** Southampton properties since we know ~ x% are not represented in the EPC data. 
 
 # R packages used
 
@@ -41,5 +359,7 @@ library(data.table)
  * bookdown [@bookdown]
  * knitr [@knitr]
  * data.table [@data.table]
+ * ggplot2 [@ggplot2]
+ * kableExtra [@kableExtra]
  
 # References
