@@ -50,10 +50,10 @@ We have to assume the data we have is the _current state of play_ for these dwel
 
 ```{r, loadSoton}
 df <- path.expand("~/data/EW_epc/domestic-E06000045-Southampton/certificates.csv")
-alldt <- data.table::fread(df)
+allEPCs_DT <- data.table::fread(df)
 ```
 
-The EPC data file has `r nrow(alldt)` records for Southampton and `r ncol(alldt)` variables. We're not interested in all of these, we want:
+The EPC data file has `r nrow(allEPCs_DT)` records for Southampton and `r ncol(allEPCs_DT)` variables. We're not interested in all of these, we want:
 
  * PROPERTY_TYPE: Describes the type of property such as House, Flat, Maisonette etc. This is the type differentiator for dwellings;
  * BUILT_FORM: The building type of the Property e.g. Detached, Semi-Detached, Terrace etc. Together with the Property Type, the Build Form produces a structured description of the property;
@@ -68,6 +68,7 @@ The EPC data file has `r nrow(alldt)` records for Southampton and `r ncol(alldt)
   * PHOTO_SUPPLY: Percentage of photovoltaic area as a percentage of total roof area. 0% indicates that a Photovoltaic Supply is not present in the property;
   * TOTAL_FLOOR_AREA: The total useful floor area is the total of all enclosed spaces measured to the internal face of the external walls, i.e. the gross floor area as measured in accordance with the guidance issued from time to time by the Royal Institute of Chartered Surveyors or by a body replacing that institution. (m²);
   * POSTCODE - to allow linkage to other datasets
+  * LOCAL_AUTHORITY_LABEL - for checking
   
 These may indicate 'non-grid' energy inputs.
  
@@ -75,24 +76,30 @@ If an EPC has been updated or refreshed, the EPC dataset will hold multiple EPC 
 
 ```{r, checkData}
 # select just these vars
-dt <- alldt[, .(BUILDING_REFERENCE_NUMBER, LMK_KEY, LODGEMENT_DATE, PROPERTY_TYPE, BUILT_FORM,
+dt <- allEPCs_DT[, .(BUILDING_REFERENCE_NUMBER, LMK_KEY, LODGEMENT_DATE, PROPERTY_TYPE, BUILT_FORM,
                 ENVIRONMENT_IMPACT_CURRENT, ENERGY_CONSUMPTION_CURRENT, CO2_EMISSIONS_CURRENT, TENURE,
-                PHOTO_SUPPLY, WIND_TURBINE_COUNT, TOTAL_FLOOR_AREA, POSTCODE)]
+                PHOTO_SUPPLY, WIND_TURBINE_COUNT, TOTAL_FLOOR_AREA, 
+                POSTCODE, LOCAL_AUTHORITY_LABEL)]
 
 # select most recent record within BUILDING_REFERENCE_NUMBER - how?
 # better check this is doing so
 setkey(dt,BUILDING_REFERENCE_NUMBER, LODGEMENT_DATE) # sort by date within reference number
-uniqueDT <- unique(dt, by = "BUILDING_REFERENCE_NUMBER",
+sotonUniqueEPCsDT <- unique(dt, by = "BUILDING_REFERENCE_NUMBER",
                    fromLast = TRUE) # which one does it take?
-test1 <- alldt[, .(min1 = min(LODGEMENT_DATE), nRecords = .N), keyby = .(BUILDING_REFERENCE_NUMBER)]
-test2 <- uniqueDT[, .(min2 = min(LODGEMENT_DATE)), keyby = .(BUILDING_REFERENCE_NUMBER)]
+
+test1 <- allEPCs_DT[, .(min1 = min(LODGEMENT_DATE), 
+                        nRecords = .N), 
+                    keyby = .(BUILDING_REFERENCE_NUMBER)]
+
+test2 <- sotonUniqueEPCsDT[, .(min2 = min(LODGEMENT_DATE)), 
+                           keyby = .(BUILDING_REFERENCE_NUMBER)]
 t <- test1[test2]
 t[, diff := min2 - min1]
 
 summary(t[nRecords > 1]) # diff is always >= 0 so min2 (after unique) is always > min1
 # confirms fromLast = TRUE has selected the most recent within BUILDING_REFERENCE_NUMBER
 
-skimr::skim(uniqueDT)
+skimr::skim(sotonUniqueEPCsDT)
 ```
 
 As we can see that we have `r uniqueN(dt$BUILDING_REFERENCE_NUMBER)` unique property reference numbers. We can also see some strangeness. In some cases we seem to have:
@@ -110,65 +117,104 @@ First we'll use the BEIS 2018 MSOA level annual electricity data to estimate the
 ```{r, checkBEIS}
 beisElecDT <- data.table::fread("~/data/beis/MSOA_DOM_ELEC_csv/MSOA_ELEC_2018.csv")
 sotonElecDT <- beisElecDT[LAName %like% "Southampton"]
-sotonElecDT[, .(nElecMeters = sum(METERS),
-                sumkWh = sum(KWH)), keyby = .(LAName)]
+sotonElecDT[, .(nElecMeters = sum(METERS)), keyby = .(LAName)]
 ```
 
 Next we'll check for the number of households reported by the 2011 Census.
 
-> would be better to use dwellings
+> would be better to use dwellings but this gives us tenure
 
 ```{r, checkCensus}
 #censusDT <- data.table::fread(path.expand("~/data/"))
-
+# IMD ----
 deprivationDT <- data.table::fread(path.expand("~/data/census2011/2011_MSOA_deprivation.csv"))
 deprivationDT[, totalHouseholds := `Household Deprivation: All categories: Classification of household deprivation; measures: Value`]
 deprivationDT[, MSOACode := `geography code`]
 setkey(deprivationDT, MSOACode)
 setkey(sotonElecDT, MSOACode)
-# link LA name from Soton
+# link LA name from Soton elec for now
 sotonDep_DT <- deprivationDT[sotonElecDT[, .(MSOACode, LAName)]]
+sotonDep_DT[, nHHs_deprivationn := `Household Deprivation: All categories: Classification of household deprivation; measures: Value`]
 
-sotonDep_DT[, .(nHouseholds = sum(totalHouseholds)), keyby = .(LAName)]
+#sotonDep_DT[, .(nHouseholds = sum(totalHouseholds)), keyby = .(LAName)]
+
+# census tenure ----
+sotonTenureDT <- data.table::fread(path.expand("~/data/census2011/2011_MSOA_householdTenure_Soton.csv"))
+
+sotonTenureDT[, census2011_socialRent := `Tenure: Social rented; measures: Value`]
+sotonTenureDT[, census2011_privateRent := `Tenure: Private rented; measures: Value`]
+sotonTenureDT[, census2011_ownerOccupy := `Tenure: Owned; measures: Value`]
+sotonTenureDT[, census2011_other := `Tenure: Living rent free; measures: Value`]
+sotonTenureDT[, MSOACode := `geography code`]
+
+sotonTenureDT[, hhCheck := census2011_socialRent + census2011_privateRent + census2011_ownerOccupy + census2011_other]
+sotonTenureDT[, nHHs_tenure := `Tenure: All households; measures: Value`]
+
+# summary(sotonTenureDT[, .(hhCheck, nHHs_tenure)])
+# might not quite match due to cell perturbation etc?
+
+# join em ----
+setkey(sotonDep_DT, MSOACode)
+setkey(sotonTenureDT, MSOACode)
+
+sotonCensus2011_DT <- sotonTenureDT[sotonDep_DT]
+
+t <- sotonCensus2011_DT[, .(sum_Deprivation = sum(nHHs_deprivationn),
+                            sum_Tenure = sum(nHHs_tenure)), keyby = .(LAName)]
+kableExtra::kable(t, caption = "Census derived household counts")
 ```
 
 That's lower (as expected) but doesn't allow for dwellings that were empty on census night.
 
 ```{r, checkPostcodes}
 # Postcodes don't help - no count of addresses in the data (there used to be??)
+# but we can use it to check which Soton postcodes are missing from the EPC file
 soPostcodesDT <- data.table::fread(path.expand("~/data/UK_postcodes/NSPL_AUG_2020_UK/Data/multi_csv/NSPL_AUG_2020_UK_SO.csv"))
 
 soPostcodesDT <- soPostcodesDT[!is.na(doterm)] # keep current
 
 sotonPostcodesDT <- soPostcodesDT[laua == "E06000045"] # keep Southampton City
 
-uniqueDT[, epcIsSocialRent := ifelse(TENURE == "rental (social)", 1, 0)]
-uniqueDT[, epcIsPrivateRent := ifelse(TENURE == "rental (private)", 1, 0)]
-uniqueDT[, epcIsOwnerOcc := ifelse(TENURE == "owner-occupied", 1, 0)]
-uniqueDT[, epcIsUnknownTenure := ifelse(TENURE == "NO DATA!" |
+# EPC
+sotonUniqueEPCsDT[, epcIsSocialRent := ifelse(TENURE == "rental (social)", 1, 0)]
+sotonUniqueEPCsDT[, epcIsPrivateRent := ifelse(TENURE == "rental (private)", 1, 0)]
+sotonUniqueEPCsDT[, epcIsOwnerOcc := ifelse(TENURE == "owner-occupied", 1, 0)]
+sotonUniqueEPCsDT[, epcIsUnknownTenure := ifelse(TENURE == "NO DATA!" |
                                           TENURE == "" , 1, 0)]
-
-sotonEpcPostcodes_DT <- uniqueDT[, .(nEPCs = .N,
+# aggregate EPCs to postcodes
+sotonEpcPostcodes_DT <- sotonUniqueEPCsDT[, .(nEPCs = .N,
                                      n_epcIsSocialRent = sum(epcIsSocialRent, na.rm = TRUE),
                                      n_epcIsPrivateRent = sum(epcIsPrivateRent, na.rm = TRUE),
                                      n_epcIsOwnerOcc = sum(epcIsOwnerOcc, na.rm = TRUE),
                                      n_epcIsUnknownTenure = sum(epcIsUnknownTenure, na.rm = TRUE),
-                               sumMWh = sum(ENERGY_CONSUMPTION_CURRENT)/1000),
-                           keyby = .(POSTCODE)]
+                               sumEpcMWh = sum(ENERGY_CONSUMPTION_CURRENT)/1000),
+                           keyby = .(POSTCODE, LOCAL_AUTHORITY_LABEL)]
 
-setkey(sotonEpcPostcodes_DT, POSTCODE)
-setkey(sotonPostcodesDT, pcd)
+# match the EPC postcode summaries to the postcode extract
+sotonEpcPostcodes_DT[, POSTCODE_s := stringr::str_remove(POSTCODE, " ")]
+setkey(sotonEpcPostcodes_DT, POSTCODE_s)
+#head(sotonEpcPostcodes_DT)
 
-sotonPostcodesDT <- sotonEpcPostcodes_DT[sotonPostcodesDT]
+pcDT <- sotonPostcodesDT[, .(pcd, pcd2, pcds, MSOACode = msoa11)] # only keep postcode vars we need
+pcDT[, c("pc_chunk1","pc_chunk2" ) := tstrsplit(pcds, split = " ")]
+table(pcDT$pc_chunk1)
+pcDT[, POSTCODE_s := stringr::str_remove(pcds, " ")]
+setkey(pcDT, POSTCODE_s)
+#head(pcDT)
 
-sotonEpcMSOA_DT <- sotonPostcodesDT[, .(nEPCs = .N, 
+sotonEpcPostcodes_DT[, c("pc_chunk1","pc_chunk2" ) := tstrsplit(POSTCODE, split = " ")]
+table(sotonEpcPostcodes_DT$pc_chunk1)
+
+dt <- sotonEpcPostcodes_DT[pcDT]
+
+sotonEpcMSOA_DT <- dt[, .(nEPCs = sum(nEPCs), 
                                         n_epcIsSocialRent = sum(n_epcIsSocialRent),
                                         n_epcIsPrivateRent = sum(n_epcIsPrivateRent),
                                         n_epcIsOwnerOcc = sum(n_epcIsOwnerOcc),
                                         n_epcIsUnknownTenure = sum(n_epcIsUnknownTenure),
                                         sumMWh = sum(sumMWh)
                                         ),
-                                    keyby = .(MSOACode = msoa11) # change name on the fly for easier matching
+                                    keyby = .(MSOACode) # change name on the fly for easier matching
                                     ] 
 ```
 
@@ -178,14 +224,17 @@ Join the estimates together at MSOA level for comparison. There are `r uniqueN(s
 # 32 LSOAs in Soton
 # add deprivation
 setkey(sotonElecDT, MSOACode)
-setkey(deprivationDT,MSOACode)
-sotonMSOA_DT <- deprivationDT[sotonElecDT]
-sotonMSOA_DT <- sotonDep_DT[sotonMSOA_DT]
+setkey(sotonCensus2011_DT, MSOACode)
+setkey(sotonEpcMSOA_DT, MSOACode)
 
+sotonMSOA_DT <- sotonCensus2011_DT[sotonElecDT]
+#names(sotonMSOA_DT)
+sotonMSOA_DT <- sotonEpcMSOA_DT[sotonMSOA_DT]
+#names(sotonMSOA_DT)
 
-t <- sotonMSOA_DT[, .(nHouseholds2011 = sum(totalHouseholds),
-                      nElecMeters2018 = sum(METERS),
-                      nEPCs = sum(),
+t <- sotonMSOA_DT[, .(nHouseholds_2011 = sum(nHHs_tenure),
+                      nElecMeters_2018 = sum(METERS),
+                      nEPCs_2020 = sum(nEPCs),
                       sumMWh = sum(KWH)/1000)]
 
 kableExtra::kable(t, caption = "Comparison of different estimates of the number of dwellings")
@@ -199,31 +248,31 @@ We recode the current energy consumption into categories for comparison with oth
 
 ```{r, checkEnergy, fig.cap="Histogram of ENERGY_CONSUMPTION_CURRENT"}
 
-ggplot2::ggplot(uniqueDT, aes(x = ENERGY_CONSUMPTION_CURRENT)) +
+ggplot2::ggplot(sotonUniqueEPCsDT, aes(x = ENERGY_CONSUMPTION_CURRENT)) +
   geom_histogram(binwidth = 5) + 
   facet_wrap(~TENURE) +
   geom_vline(xintercept = 0)
 
-underZero <- nrow(uniqueDT[ENERGY_CONSUMPTION_CURRENT < 0])
+underZero <- nrow(sotonUniqueEPCsDT[ENERGY_CONSUMPTION_CURRENT < 0])
 
-t <- with(uniqueDT[ENERGY_CONSUMPTION_CURRENT < 0],
+t <- with(sotonUniqueEPCsDT[ENERGY_CONSUMPTION_CURRENT < 0],
      table(BUILT_FORM,TENURE))
 
 
 kableExtra::kable(t, caption = "Properties with ENERGY_CONSUMPTION_CURRENT < 0")
 
 # do we think this is caused by solar/wind?
-uniqueDT[, hasWind := ifelse(WIND_TURBINE_COUNT > 0, "Yes", "No")]
-#table(uniqueDT$hasWind)
-uniqueDT[, hasPV := ifelse(PHOTO_SUPPLY >0, "Yes", "No")]
-#table(uniqueDT$hasPV)
-uniqueDT[, consFlag := ifelse(ENERGY_CONSUMPTION_CURRENT < 0, "-ve kWh/y", NA)]
-uniqueDT[, consFlag := ifelse(ENERGY_CONSUMPTION_CURRENT == 0, "0 kWh/y", consFlag)]
-uniqueDT[, consFlag := ifelse(ENERGY_CONSUMPTION_CURRENT > 0 & 
+sotonUniqueEPCsDT[, hasWind := ifelse(WIND_TURBINE_COUNT > 0, "Yes", "No")]
+#table(sotonUniqueEPCsDT$hasWind)
+sotonUniqueEPCsDT[, hasPV := ifelse(PHOTO_SUPPLY >0, "Yes", "No")]
+#table(sotonUniqueEPCsDT$hasPV)
+sotonUniqueEPCsDT[, consFlag := ifelse(ENERGY_CONSUMPTION_CURRENT < 0, "-ve kWh/y", NA)]
+sotonUniqueEPCsDT[, consFlag := ifelse(ENERGY_CONSUMPTION_CURRENT == 0, "0 kWh/y", consFlag)]
+sotonUniqueEPCsDT[, consFlag := ifelse(ENERGY_CONSUMPTION_CURRENT > 0 & 
                                      ENERGY_CONSUMPTION_CURRENT <= 1, "0-1 kWh/y", consFlag)]
-uniqueDT[, consFlag := ifelse(ENERGY_CONSUMPTION_CURRENT > 1, "1+ kWh/y", consFlag)]
+sotonUniqueEPCsDT[, consFlag := ifelse(ENERGY_CONSUMPTION_CURRENT > 1, "1+ kWh/y", consFlag)]
 
-t <- uniqueDT[, .(nObs = .N), keyby = .(consFlag, hasWind, hasPV)]
+t <- sotonUniqueEPCsDT[, .(nObs = .N), keyby = .(consFlag, hasWind, hasPV)]
 
 kableExtra::kable(t, caption = "Properties in ENERGY_CONSUMPTION_CURRENT category by presence of microgeneration")
 
@@ -234,7 +283,7 @@ There are only `r underZero` dwellings where ENERGY_CONSUMPTION_CURRENT < 0 and 
 ```{r, energyTenure, fig.cap="Comparing distributions of ENERGY_CONSUMPTION_CURRENT by tenure and built form"}
 # repeat with a density plot to allow easy overlap 
 # exclude those with no data
-ggplot2::ggplot(uniqueDT[TENURE != "NO DATA!" &
+ggplot2::ggplot(sotonUniqueEPCsDT[TENURE != "NO DATA!" &
                            TENURE != "unknown" &
                            TENURE != ""], aes(x = ENERGY_CONSUMPTION_CURRENT, 
                                               fill = TENURE, alpha = 0.2)) +
@@ -250,23 +299,23 @@ Next we do the same for current emissions. Repeat the coding for total floor are
 
 
 ```{r, checkEmissions, fig.cap="Histogram of CO2_EMISSIONS_CURRENT"}
-ggplot2::ggplot(uniqueDT, aes(x = CO2_EMISSIONS_CURRENT)) +
+ggplot2::ggplot(sotonUniqueEPCsDT, aes(x = CO2_EMISSIONS_CURRENT)) +
   geom_histogram(binwidth = 1)
 
-nZeroEmissions <- nrow(uniqueDT[CO2_EMISSIONS_CURRENT < 0])
+nZeroEmissions <- nrow(sotonUniqueEPCsDT[CO2_EMISSIONS_CURRENT < 0])
 
-uniqueDT[, emissionsFlag := ifelse(CO2_EMISSIONS_CURRENT < 0, "-ve CO2/y", NA)]
-uniqueDT[, emissionsFlag := ifelse(CO2_EMISSIONS_CURRENT == 0, "0 CO2/y", emissionsFlag)]
-uniqueDT[, emissionsFlag := ifelse(CO2_EMISSIONS_CURRENT > 0 & 
+sotonUniqueEPCsDT[, emissionsFlag := ifelse(CO2_EMISSIONS_CURRENT < 0, "-ve CO2/y", NA)]
+sotonUniqueEPCsDT[, emissionsFlag := ifelse(CO2_EMISSIONS_CURRENT == 0, "0 CO2/y", emissionsFlag)]
+sotonUniqueEPCsDT[, emissionsFlag := ifelse(CO2_EMISSIONS_CURRENT > 0 & 
                                      CO2_EMISSIONS_CURRENT <= 1, "0-1 TCO2/y", emissionsFlag)]
-uniqueDT[, emissionsFlag := ifelse(CO2_EMISSIONS_CURRENT > 1, "1+ TCO2/y", emissionsFlag)]
+sotonUniqueEPCsDT[, emissionsFlag := ifelse(CO2_EMISSIONS_CURRENT > 1, "1+ TCO2/y", emissionsFlag)]
 
-t <- uniqueDT[, .(nObs = .N), keyby = .(emissionsFlag, hasWind, hasPV)]
+t <- sotonUniqueEPCsDT[, .(nObs = .N), keyby = .(emissionsFlag, hasWind, hasPV)]
 
 kableExtra::kable(t, caption = "Properties with CO2_EMISSIONS_CURRENT < 0 by presence of microgeneration")
 
-kableExtra::kable(round(100*(prop.table(table(uniqueDT$emissionsFlag, 
-                                              uniqueDT$consFlag, 
+kableExtra::kable(round(100*(prop.table(table(sotonUniqueEPCsDT$emissionsFlag, 
+                                              sotonUniqueEPCsDT$consFlag, 
                                               useNA = "always")
                                         )
                              )
@@ -282,7 +331,7 @@ There are `r nZeroEmissions` properties with 0 or negative emissions. It looks l
 `Environmental impact` should decrease as emissions increase.
 
 ```{r, checkImpact, fig.cap="Histogram of ENVIRONMENT_IMPACT_CURRENT"}
-ggplot2::ggplot(alldt, aes(x = ENVIRONMENT_IMPACT_CURRENT)) +
+ggplot2::ggplot(allEPCs_DT, aes(x = ENVIRONMENT_IMPACT_CURRENT)) +
   geom_histogram()
 ```
 
@@ -290,7 +339,7 @@ So what is the relationship between ENVIRONMENT_IMPACT_CURRENT and CO2_EMISSIONS
 
 ```{r, checkEmissionsImpact, fig.cap="PLot of ENVIRONMENT_IMPACT_CURRENT vs CO2_EMISSIONS_CURRENT"}
 
-ggplot2::ggplot(alldt, aes(x = CO2_EMISSIONS_CURRENT, 
+ggplot2::ggplot(allEPCs_DT, aes(x = CO2_EMISSIONS_CURRENT, 
                            y = ENVIRONMENT_IMPACT_CURRENT,
                            colour = TENURE)) +
   geom_point() +
@@ -303,25 +352,25 @@ ggplot2::ggplot(alldt, aes(x = CO2_EMISSIONS_CURRENT,
 Repeat the coding for total floor area using 5 m2 as the threshold of interest.
 
 ```{r, checkEmissions, fig.cap="Histogram of TOTAL_FLOOR_AREA"}
-ggplot2::ggplot(uniqueDT, aes(x = TOTAL_FLOOR_AREA)) +
+ggplot2::ggplot(sotonUniqueEPCsDT, aes(x = TOTAL_FLOOR_AREA)) +
   geom_histogram(binwidth = 1)
 
-nZeroFloorArea <- nrow(uniqueDT[TOTAL_FLOOR_AREA < 0])
+nZeroFloorArea <- nrow(sotonUniqueEPCsDT[TOTAL_FLOOR_AREA < 0])
 
-uniqueDT[, floorFlag := ifelse(TOTAL_FLOOR_AREA == 0, "0 m2", NA)]
-uniqueDT[, floorFlag := ifelse(TOTAL_FLOOR_AREA > 0 & 
+sotonUniqueEPCsDT[, floorFlag := ifelse(TOTAL_FLOOR_AREA == 0, "0 m2", NA)]
+sotonUniqueEPCsDT[, floorFlag := ifelse(TOTAL_FLOOR_AREA > 0 & 
                                      TOTAL_FLOOR_AREA <= 10, "0-5 m2", floorFlag)]
-uniqueDT[, floorFlag := ifelse(TOTAL_FLOOR_AREA > 10, "5+ m2", floorFlag)]
+sotonUniqueEPCsDT[, floorFlag := ifelse(TOTAL_FLOOR_AREA > 10, "5+ m2", floorFlag)]
 
-t <- with(uniqueDT, table(floorFlag, consFlag))
+t <- with(sotonUniqueEPCsDT, table(floorFlag, consFlag))
 
 kableExtra::kable(round(100*prop.table(t),2), caption = "% properties with TOTAL_FLOOR_AREA category by ENERGY_CONSUMPTION_CURRENT category")
 
-kableExtra::kable(head(uniqueDT[, .(BUILDING_REFERENCE_NUMBER, PROPERTY_TYPE, TOTAL_FLOOR_AREA, 
+kableExtra::kable(head(sotonUniqueEPCsDT[, .(BUILDING_REFERENCE_NUMBER, PROPERTY_TYPE, TOTAL_FLOOR_AREA, 
                                     ENERGY_CONSUMPTION_CURRENT)][order(-TOTAL_FLOOR_AREA)], 10), 
                   caption = "Top 10 by floor area (largest)")
 
-kableExtra::kable(head(uniqueDT[, .(BUILDING_REFERENCE_NUMBER, PROPERTY_TYPE, TOTAL_FLOOR_AREA,
+kableExtra::kable(head(sotonUniqueEPCsDT[, .(BUILDING_REFERENCE_NUMBER, PROPERTY_TYPE, TOTAL_FLOOR_AREA,
                                     ENERGY_CONSUMPTION_CURRENT)][order(TOTAL_FLOOR_AREA)], 10), 
                   caption = "Bottom 10 by floor area (smallest)")
 
@@ -342,7 +391,7 @@ We have identified some issues with a small number of the properties in the EPC 
  * any property where CO2_EMISSIONS_CURRENT <= 0
 
 ```{r, finalData}
-finalDT <- uniqueDT[ENERGY_CONSUMPTION_CURRENT > 0 &
+finalDT <- sotonUniqueEPCsDT[ENERGY_CONSUMPTION_CURRENT > 0 &
                       TOTAL_FLOOR_AREA > 5 &
                       CO2_EMISSIONS_CURRENT > 0]
 
