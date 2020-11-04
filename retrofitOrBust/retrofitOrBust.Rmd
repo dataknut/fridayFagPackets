@@ -30,7 +30,7 @@ bibliography: '`r path.expand("~/github/dataknut/refs/refs.bib")`'
 
 <hr>
 
->This frdayFun note was first published as a [blog](https://dataknut.wordpress.com/2020/10/16/retrofit-or-bust/)
+>This fridayFagPacket was first published as a [blog](https://dataknut.wordpress.com/2020/10/16/retrofit-or-bust/)
 
 <hr>
 ```{r setup, include=FALSE}
@@ -101,7 +101,7 @@ Intriguingly this is exactly what N[ew Zealand’s Ministry of Business, Innovat
 
 # Detailed tables
 
-We did the original analysis in the excel workbooks we downloaded from gov.uk. You can find them [here](https://git.soton.ac.uk/SERG/fridayfun/-/blob/master/2020-10-16-retrofOrBust/2018_EHS_Energy_Chapter_3_Figures_and_Annex_Tables.xlsx) (Tab: AT3.4 Edited). Hey, no-one's perfect.
+We did the original analysis in the excel workbooks we downloaded from gov.uk. You can find the workbook working [here (Tab: AT3.4 Edited))](2018_EHS_Energy_Chapter_3_Figures_and_Annex_Tables.xlsx). Hey, no-one's perfect.
 
 ![Table 1](T1.png)
 
