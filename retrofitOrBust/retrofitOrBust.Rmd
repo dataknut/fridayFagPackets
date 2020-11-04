@@ -30,7 +30,7 @@ bibliography: '`r path.expand("~/github/dataknut/refs/refs.bib")`'
 
 <hr>
 
->This frdayFun note was first published as a [blog](https://dataknut.wordpress.com/2020/10/16/retrofit-or-bust/)
+>This fridayFagPacket was first published as a [blog](https://dataknut.wordpress.com/2020/10/16/retrofit-or-bust/)
 
 <hr>
 ```{r setup, include=FALSE}
