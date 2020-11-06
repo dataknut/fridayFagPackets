@@ -594,15 +594,77 @@ ggplot2::ggplot(sotonMSOA_DT, aes(x = sumBEIS_tCO2,
 
 \@ref(fig:energyMSOAPlot) shows that 
 
+# Carbon Tax Scenarios
+
+## No change to carbon intensity
+
+* no emissions allowances (unlike the ETS and also [current UK government proposals](https://assets.publishing.service.gov.uk/government/uploads/system/uploads/attachment_data/file/828824/Carbon_Emissions_Tax_-_Technical_Note__1_.pdf))
+* [Carbon tax rate of £16/T](https://assets.publishing.service.gov.uk/government/uploads/system/uploads/attachment_data/file/828824/Carbon_Emissions_Tax_-_Technical_Note__1_.pdf) (currently only proposed for [businesses](https://www.gov.uk/government/publications/changes-to-tax-provisions-for-carbon-emissions-tax/changes-to-tax-provisions-for-carbon-emissions-tax))
+
+Applying these rates enables us to calculate the Southampton and MSOA level Carbon Tax liability of households via the EPC and BEIS observed energy consumption methods.
+
+```{r, msoaScenario1}
+sotonMSOA_DT[, ct_BEIS := sumBEIS_tCO2 * 16]
+sotonMSOA_DT[, ct_EPCs := sumEPC_tCO2 * 16]
+
+t <- sotonMSOA_DT[, .(CarbonTaxBEIS_GBP = prettyNum(sum(ct_BEIS), big.mark = ","),
+                      CarbonTaxEPCs_GBP = prettyNum(sum(ct_EPCs), big.mark = ",")),
+                  keyby = .(LAName)]
+
+kableExtra::kable(t, caption = "Estimated Carbon tax liability for Southampton households/properties under Scenario 1") %>%
+  kable_styling()
 ```
 
-Scenarios
+As we would expect the values are relatively close due to the similar total emissions values estimated above.
 
-National Grid’s Future Energy Scenarios:
+If we look at the values by MSOA (\@ref(fig:carbonTaxMSOAPlot)), we find that values differ quite substantially between the methods depending on the levels of EPC records (or missing households - see above) that we are likely to have.
+
+```{r, carbonTaxMSOAPlot, fig.cap="Energy demand comparison"}
+ggplot2::ggplot(sotonMSOA_DT, aes(x = ct_BEIS/1000, 
+                       y = ct_EPCs/1000,
+                       colour = round(ownerOcc_pc))) +
+  geom_abline(alpha = 0.2, slope=1, intercept=0) +
+  geom_point() +
+  scale_color_continuous(name = "% owner occupiers \n(Census 2011)", high = "red", low = "green") +
+  #theme(legend.position = "bottom") +
+  labs(x = "EPC 2020 derived total Carbon Tax £k/year",
+       y = "BEIS 2018 derived total Carbon Tax £k/year",
+       caption = "x = y line included for clarity")
+
+#outlier <- t[sumEpcMWh > 70000]
+```
+
+Perhaps of more interest however is the relationship between estimated Carbon Tax £ and levels of deprivation. Figure \@ref(fig:carbonTaxMSOAPlotDep) shows the estimated total Carbon Tax (in £k per year) per MSOA against the proportion of households in the MSOA who do not suffer from any dimension of deprivation as defined by the English [Indices of Multiple Deprivation](https://www.nomisweb.co.uk/census/2011/qs119ew). As we can see the higher the proportion of households with no deprivation, the higher the total MSOA Carbon Tax. This suggests that a Carbon Tax will be regressive - those who pay the most are likely to be those who use more energy and thus are likely to be those who can afford to do so.
+
+But we need to be very careful. Some deprived households might well spend a high proportion of their income on energy in order to heat very energy efficient homes. For them, a Carbon Tax would be similar to VAT - an additional burden that might be relatively small in £ terms (compared to a well-off high energy-using household) but high in terms of the % of their income (or expenditure). This is a well known issue highlighted by recent [ONS data on family energy expenditures](https://twitter.com/dataknut/status/1312855327491133441/photo/1).
+
+```{r, carbonTaxMSOAPlotDep, fig.cap="Energy demand comparison"}
+
+t1 <- sotonMSOA_DT[, .(MSOACode, ctSum = ct_EPCs, dep0_pc)]
+t1[, source := "BEIS 2018"]
+t2 <- sotonMSOA_DT[, .(MSOACode, ctSum = ct_BEIS, dep0_pc)]
+t2[, source := "EPC 2020"]
+
+plotDT <- rbind(t1,t2)
+
+ggplot2::ggplot(plotDT, aes(x = dep0_pc, y = ctSum, colour = source)) +
+  geom_point() +
+  geom_smooth() +
+  #theme(legend.position = "bottom") +
+  labs(x = "% with no deprivation dimensions \n(Census 2011)",
+       y = "Carbon Tax £k/year",
+       caption = "x = y line included for clarity")
+
+#outlier <- t[sumEpcMWh > 70000]
+```
+
+
+## National Grid’s Future Energy Scenarios:
 
  * 2030 emissions level for electricity of 0.102 kgCO2/kWh
  * gas unchanged
-
+ 
+ 
 # R packages used
 
  * rmarkdown [@rmarkdown]
