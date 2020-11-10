@@ -1855,7 +1855,7 @@ div.tocify {
 <h1 class="title toc-ignore">Checking EPC datasets for Southampton</h1>
 <h3 class="subtitle">Data cleaning, outlier checks and coverage analysis</h3>
 <h4 class="author">Ben Anderson</h4>
-<h4 class="date">Last run at: 2020-11-10 17:26:27</h4>
+<h4 class="date">Last run at: 2020-11-10 17:31:09</h4>
 
 </div>
 
@@ -5346,7 +5346,7 @@ E02003553
 </div>
 <div id="save-msoa-aggregates-for-re-use" class="section level1">
 <h1><span class="header-section-number">6</span> Save MSOA aggregates for re-use</h1>
-<p>Finally we save the MSOA table into the repo data directory for future use. We don;t usually advocate keeping data in a git repo but this is small, aggregated and <a href="https://en.wikipedia.org/wiki/Mostly_Harmless">mostly harmless</a>.</p>
+<p>Finally we save the MSOA table into the repo data directory for future use. We don’t usually advocate keeping data in a git repo but this is small, aggregated and <a href="https://en.wikipedia.org/wiki/Mostly_Harmless">mostly harmless</a>.</p>
 <pre class="r"><code>of &lt;-  here::here(&quot;data&quot;, &quot;sotonMSOAdata.csv&quot;)
 
 data.table::fwrite(sotonMSOA_DT, of)

@@ -606,7 +606,7 @@ kableExtra::kable(t2, caption = "Southampton MSOAs: BEIS 2018 energy data ordere
 
 # Save MSOA aggregates for re-use
 
-Finally we save the MSOA table into the repo data directory for future use. We don;t usually advocate keeping data in a git repo but this is small, aggregated and [mostly harmless](https://en.wikipedia.org/wiki/Mostly_Harmless).
+Finally we save the MSOA table into the repo data directory for future use. We don't usually advocate keeping data in a git repo but this is small, aggregated and [mostly harmless](https://en.wikipedia.org/wiki/Mostly_Harmless).
 
 ```{r, saveMSOA}
 of <-  here::here("data", "sotonMSOAdata.csv")
