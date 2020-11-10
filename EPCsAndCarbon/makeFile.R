@@ -17,9 +17,9 @@ makeReport <- function(f){
 }
 
 # >> run report ----
-rmdFile <- "carbonCosts" # not the full path
-title = "What can EPC data tell us about the domestic cost of carbon?"
-subtitle = ""
+rmdFile <- "epcChecks" # not the full path
+title = "Checking EPC datasets for Southampton"
+subtitle = "Data cleaning, outlier checks and coverage analysis"
 authors = "Ben Anderson"
 
 makeReport(rmdFile)
