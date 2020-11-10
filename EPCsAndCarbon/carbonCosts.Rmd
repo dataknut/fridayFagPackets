@@ -157,7 +157,7 @@ We now use these MSOA level estimates to calculate the tax liability of these em
 In all cases we assume:
 
  * no emissions allowances (unlike the ETS and also [current UK government proposals](https://assets.publishing.service.gov.uk/government/uploads/system/uploads/attachment_data/file/828824/Carbon_Emissions_Tax_-_Technical_Note__1_.pdf))
- * [Carbon tax rate of £16/T](https://assets.publishing.service.gov.uk/government/uploads/system/uploads/attachment_data/file/828824/Carbon_Emissions_Tax_-_Technical_Note__1_.pdf) (currently only proposed for [businesses](https://www.gov.uk/government/publications/changes-to-tax-provisions-for-carbon-emissions-tax/changes-to-tax-provisions-for-carbon-emissions-tax))
+ * [Carbon tax rate of £16/TCO2](https://assets.publishing.service.gov.uk/government/uploads/system/uploads/attachment_data/file/828824/Carbon_Emissions_Tax_-_Technical_Note__1_.pdf) (currently only proposed for [businesses](https://www.gov.uk/government/publications/changes-to-tax-provisions-for-carbon-emissions-tax/changes-to-tax-provisions-for-carbon-emissions-tax))
  * no other behavioural or building fabric related changes (highly unlikely)
 
 ## No change to carbon intensity
