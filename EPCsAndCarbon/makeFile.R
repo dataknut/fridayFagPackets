@@ -25,7 +25,7 @@ authors = "Ben Anderson"
 makeReport(rmdFile)
 
 rmdFile <- "carbonCosts" # not the full path
-title = "Exploring scenarios for a residential dwellings Carbon Tax"
+title = "Exploring #backOfaFagPacket scenarios for a residential dwellings Carbon Tax"
 subtitle = "Southampton as a case study"
 authors = "Ben Anderson"
 

@@ -44,10 +44,10 @@ There's a lot of talk about Carbon Taxes right now and some early signs that the
 
 But what if we did? How much would it raise and from whom?
 
-There is no simple answer to this hypothetical question since it depends what [Scope of emissions](https://www.carbontrust.com/resources/briefing-what-are-scope-3-emissions) we consider and in what detail. Bradky speaking the scopes are:
+There is no simple answer to this hypothetical question since it depends what [scope of emissions](https://www.carbontrust.com/resources/briefing-what-are-scope-3-emissions) we consider, in what detail and our assumptions of taxation levels per kg of CO2. Broadly speaking the scopes are:
 
  * Scope 1 – All direct emissions caused by burning something (gas, oil, wood, coal etc);
- * Scope 2 - Indirect emissions from electricity purchased and used - the carbon intensity of these (kg Co2/kWh) depends on how it is generated and also, of course, on which tariff you have. A 100% renewable electrons tariff will have a carbon intensity of ~0. If you have a 'normal' tariff you will just have to take what the [grid offers](https://www.carbonintensity.org.uk/);
+ * Scope 2 - Indirect emissions from electricity purchased and used - the carbon intensity of these (kg CO2/kWh) depends on how it is generated and also, of course, on which tariff you have. A 100% renewable electrons tariff will have a carbon intensity of ~0. If you have a 'normal' tariff you will just have to take what the [grid offers](https://www.carbonintensity.org.uk/);
  * Scope 3 - All Other Indirect Emissions from things you do - e.g. the things you buy (food, clothes, gadgets etc etc)
 
 Estimating the emissions from [Scope 3](https://www.carbontrust.com/resources/briefing-what-are-scope-3-emissions) is [notably difficult](https://www.sciencedirect.com/science/article/pii/S0921800913000980) so for now we're going to make a #backOfaFagPacket estimate of the residential emissions from Scopes 1 and 2 in Southampton and see what a Carbon Tax applied to these emissions would look like.
@@ -77,7 +77,8 @@ So with the usual #backOfaFagPacket health warning, let's try.
 
 # Current estimated annual CO2 emmisions
 
-In this #fridayFagPacket we're going to use these datasets to estimate the annual CO2 emissions at MSOA level for Southampton using
+In this #fridayFagPacket we're going to use these datasets to estimate the annual CO2 emissions at MSOA level for Southampton using:
+
    * BEIS observed data
    * aggregated EPC data
 
@@ -99,7 +100,7 @@ gasCF <- 215 # g CO2e/kWh https://www.icax.co.uk/Carbon_Emissions_Calculator.htm
 
 Clearly if we change these assumptions then we change the results...
 
-For the EPC we just use the estimated CO2 values - although we should note that these are based on 'old' electricity grid carbon intensity values (ref) and since the EPC data does not provide gas and electricity kWh data separately we cannot correct it.
+For the EPC we just use the estimated CO2 values - although we should note that these are based on ['old' electricity grid carbon intensity values](https://www.passivhaustrust.org.uk/guidance_detail.php?gId=44) and since the EPC data does not provide gas and electricity kWh data separately, we cannot correct it.
 
 ```{r, co2BEIS}
 msoaDT[, sumBEIS_gCO2 := (beisElecMWh*1000)*elecCF + (beisGasMWh*1000)*gasCF] # calculate via g & kWh
@@ -151,7 +152,7 @@ With this in mind the total t CO2e values shown in Table \@ref(tab:sotonCO2) sho
 We now use these MSOA level estimates to calculate the tax liability of these emissions if:
 
  * there is no change to carbon intensity - i.e. the current baseline. In this case we can use both the BEIS and EPC derived data although they will simply differ by the same % as reported above
- * the carbon intensity of electricity falls to [100 gCO2/kWh](https://www.carbonintensity.org.uk/) by 2030 - an [entirely feasible level](https://www.nationalgrideso.com/future-energy/future-energy-scenarios/fes-2020-documents). In this case we can only use the BEIS data since we are unable to separate fuel source in the EPC data and we assume no changes to the carbon intensity of gas.
+ * the carbon intensity of electricity falls to [100 gCO2/kWh](https://www.carbonintensity.org.uk/) by 2030 (an [entirely feasible level](https://www.nationalgrideso.com/future-energy/future-energy-scenarios/fes-2020-documents)) and we assume no changes to the carbon intensity of gas. In this case we can only use the BEIS data since we are unable to separate fuel source in the EPC data.
 
 In all cases we assume:
 
@@ -183,9 +184,9 @@ As we would expect the values are relatively close due to the similar total emis
 ct_perHH <- 102000000/sum(msoaDT$nHHs_tenure)
 ```
 
-For context, Southampton City Council project a `Council Tax Requirement` of £102m in Council Tax in [2020-2021](https://www.southampton.gov.uk/council-tax/information/how-much-we-spend.aspx). That's a mean of ~ £ `r ct_perHH` per household per year...
+For context, Southampton City Council project a `Council Tax Requirement` of £102m in Council Tax in [2020-2021](https://www.southampton.gov.uk/council-tax/information/how-much-we-spend.aspx). That's a mean of ~ £ `r round(ct_perHH)` per household per year...
 
-However, as we would expect given Figure \@ref(fig:co2MSOAPlot), if we look at the values by MSOA (\@ref(fig:carbonTaxMSOAPlot)), we find that values differ quite substantially between the methods depending on the levels of EPC records (or missing households - see above) that we are likely to have.
+However, as we would expect given Figure \@ref(fig:co2MSOAPlot), if we look at the values by MSOA (Figure \@ref(fig:carbonTaxMSOAPlot)), we find that values differ quite substantially between the methods depending on the levels of EPC records (or missing households - see above) that we are likely to have.
 
 ```{r, carbonTaxMSOAPlot, fig.cap="Energy demand comparison"}
 ggplot2::ggplot(msoaDT, aes(x = ct_EPCs/nHHs_tenure, 
@@ -202,7 +203,7 @@ ggplot2::ggplot(msoaDT, aes(x = ct_EPCs/nHHs_tenure,
 #outlier <- t[sumEpcMWh > 70000]
 ```
 
-Perhaps of more interest however is the relationship between estimated Carbon Tax £ per household and levels of deprivation. Figure \@ref(fig:carbonTaxMSOAPlotDep) shows the estimated mean Carbon Tax per household (in £ per year) for each MSOA against the proportion of households in the MSOA who do not suffer from any dimension of deprivation as defined by the English [Indices of Multiple Deprivation](https://www.nomisweb.co.uk/census/2011/qs119ew). As we can see the higher the proportion of households with no deprivation, the higher the mean household Carbon Tax. This suggests that a Carbon Tax will be regressive - those who pay the most are likely to be those who use more energy and thus are likely to be those who can afford to do so. Interestingly the BEIS-derived estimates show a much stronger trend than the EPC data which relies solely on building fabric model-based estimates of carbon emissions.
+Perhaps of more interest however is the relationship between estimated Carbon Tax £ per household and levels of deprivation. Figure \@ref(fig:carbonTaxMSOAPlotDep) shows the estimated mean Carbon Tax per household (in £ per year using Census 2011 household counts) for each MSOA against the proportion of households in the MSOA who do not suffer from any dimension of deprivation as defined by the English [Indices of Multiple Deprivation](https://www.nomisweb.co.uk/census/2011/qs119ew). As we can see the higher the proportion of households with no deprivation, the higher the mean household Carbon Tax. This suggests that a Carbon Tax will be progressive - those who pay the most are likely to be those who use more energy and thus are likely to be those who can afford to do so. Interestingly the BEIS-derived estimates show a much stronger trend than the EPC data which relies solely on building fabric model-based estimates of carbon emissions.
 
 ```{r, carbonTaxMSOAPlotDep, fig.cap="Carbon Tax comparison by MSOA deprivation levels"}
 
@@ -218,7 +219,8 @@ ggplot2::ggplot(plotDT, aes(x = dep0_pc, y = ctSum/nHHs_tenure, colour = source)
   geom_smooth() +
   #theme(legend.position = "bottom") +
   labs(x = "% with no deprivation dimensions \n(Census 2011)",
-       y = "Carbon Tax £/household/year")
+       y = "Carbon Tax £/household/year",
+       caption = "Smoothed trend line via loess")
 
 #outlier <- t[sumEpcMWh > 70000]
 ```
@@ -227,12 +229,11 @@ But we need to be very careful. Some deprived households might well spend a high
 
 ## Reducing electricity carbon intensity
 
-Under this scenario we repeat the preceding analysis but using:
-
 ```{r, elecScenario}
 elecCF_scen1 <- 100
 ```
 
+Under this scenario we repeat the preceding analysis but use:
 
   * electricity: `r elecCF_scen1` g CO2e/kWh 
   * gas: `r gasCF` g CO2e/kWh 
@@ -250,13 +251,13 @@ t <- msoaDT[, .(Baseline = sum(ct_BEIS),
                   keyby = .(LAName)]
 t[, reduction_pc := round(100*(1-(Scenario_1/Baseline)))]
 
-kableExtra::kable(t, caption = "Estimated Carbon Tax liability for Southampton households/properties uner Scenario 1") %>%
+kableExtra::kable(t, caption = "Estimated Carbon Tax liability for Southampton households/properties under Scenario 1") %>%
   kable_styling()
 ```
 
 Table \@ref(tab:msoaScenario1) suggests this will result in a `r t[, reduction_pc]` % reduction in Carbon Tax.
 
-Figure \@ref(fig:carbonTaxMSOAPlotDepSecen1) shows the estimated mean annual Carbon Tax per household (£ per household per year) per MSOA under the new scenario against the proportion of households in the MSOA who do not suffer from any dimension of deprivation as defined by the English [Indices of Multiple Deprivation](https://www.nomisweb.co.uk/census/2011/qs119ew). It also shows the orioginal BEIS baseline for comparison. As we can see the shapes of the curves are similar but with an overall reduction. There do not appear to be any particular advantages for area with higher or lower deprivation levels.
+Figure \@ref(fig:carbonTaxMSOAPlotDepSecen1) shows the estimated mean annual Carbon Tax per household (£ per household per year) per MSOA under the new scenario against the proportion of households in the MSOA who do not suffer from any dimension of deprivation as defined by the English [Indices of Multiple Deprivation](https://www.nomisweb.co.uk/census/2011/qs119ew). It also shows the original BEIS baseline for comparison. As we can see the shapes of the curves are similar but with an overall reduction. There do not appear to be any particular advantages for areas with higher or lower deprivation levels.
 
 ```{r, carbonTaxMSOAPlotDepSecen1, fig.cap="Carbon tax by deprivation under Scenario 1"}
 
@@ -297,6 +298,14 @@ outlier$MSOACode
 However if we analyse the total change by MSOA (\@ref(fig:carbonTaxMSOAPlotDepChange)) we see that one area (`r outlier$MSOACode`) shows a marked reduction. We have seen this area before - it has the [highest electricity demand](epcChecks.html#5_Check_BEIS_data) so no surprises there.
 
 # So what?
+
+Several things are clear from these #backOfaFagPacket estimates:
+
+ * we need much better data
+ * if the data we have is in any way remotely robust then:
+   * a domestic Carbon Tax of £16/TCO2 is not going to produce a large incentive to de-carbonise
+   * given that larger and wealthier households use more energy, a fixed rate Carbon Tax might be progressive - but we need dwelling level analysis to confirm this
+   * but wealthier households would potentially have the capital to de-carbonise quicker
 
 # R packages used
 
