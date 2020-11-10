@@ -145,11 +145,182 @@ As we can see that we have `r uniqueN(dt$BUILDING_REFERENCE_NUMBER)` unique prop
 
 This is not surprising since the kWh/y and TCO2/y values are estimated using a model but before we go any further we'd better check if these are significant in number.
 
-# Data checks
+# EPC data checks
 
-## Check 'missing' EPC rates
+## Check ENERGY_CONSUMPTION_CURRENT
 
-We will do this mostly at MSOA level as it allows us to link to other MSOA level datasets. Arguably it would be better to do this at LSOA level but...
+We recode the current energy consumption into categories for comparison with other low values and the presence of wind turbines/PV. We use -ve, 0 and 1 kWh as the thresholds of interest.
+
+```{r, checkEnergy, fig.cap="Histogram of ENERGY_CONSUMPTION_CURRENT"}
+
+ggplot2::ggplot(sotonUniqueEPCsDT, aes(x = ENERGY_CONSUMPTION_CURRENT)) +
+  geom_histogram(binwidth = 5) + 
+  facet_wrap(~TENURE) +
+  geom_vline(xintercept = 0)
+
+underZero <- nrow(sotonUniqueEPCsDT[ENERGY_CONSUMPTION_CURRENT < 0])
+
+t <- with(sotonUniqueEPCsDT[ENERGY_CONSUMPTION_CURRENT < 0],
+     table(BUILT_FORM,TENURE))
+
+
+kableExtra::kable(t, caption = "Properties with ENERGY_CONSUMPTION_CURRENT < 0")
+
+# do we think this is caused by solar/wind?
+sotonUniqueEPCsDT[, hasWind := ifelse(WIND_TURBINE_COUNT > 0, "Yes", "No")]
+#table(sotonUniqueEPCsDT$hasWind)
+sotonUniqueEPCsDT[, hasPV := ifelse(PHOTO_SUPPLY >0, "Yes", "No")]
+#table(sotonUniqueEPCsDT$hasPV)
+sotonUniqueEPCsDT[, consFlag := ifelse(ENERGY_CONSUMPTION_CURRENT < 0, "-ve kWh/y", NA)]
+sotonUniqueEPCsDT[, consFlag := ifelse(ENERGY_CONSUMPTION_CURRENT == 0, "0 kWh/y", consFlag)]
+sotonUniqueEPCsDT[, consFlag := ifelse(ENERGY_CONSUMPTION_CURRENT > 0 & 
+                                     ENERGY_CONSUMPTION_CURRENT <= 1, "0-1 kWh/y", consFlag)]
+sotonUniqueEPCsDT[, consFlag := ifelse(ENERGY_CONSUMPTION_CURRENT > 1, "1+ kWh/y", consFlag)]
+
+t <- sotonUniqueEPCsDT[, .(nObs = .N), keyby = .(consFlag, hasWind, hasPV)]
+
+kableExtra::kable(t, caption = "Properties in ENERGY_CONSUMPTION_CURRENT category by presence of microgeneration")
+
+```
+
+There are only `r underZero` dwellings where ENERGY_CONSUMPTION_CURRENT < 0 and none of them seem to have PV or a wind turbine so we can probably ignore them.
+
+```{r, energyTenure, fig.cap="Comparing distributions of ENERGY_CONSUMPTION_CURRENT by tenure and built form"}
+# repeat with a density plot to allow easy overlap 
+# exclude those with no data
+ggplot2::ggplot(sotonUniqueEPCsDT[TENURE != "NO DATA!" &
+                           TENURE != "unknown" &
+                           TENURE != ""], aes(x = ENERGY_CONSUMPTION_CURRENT, 
+                                              fill = TENURE, alpha = 0.2)) +
+  geom_density() +
+  facet_wrap(~BUILT_FORM) +
+  guides(alpha = FALSE) +
+  theme(legend.position = "bottom")
+```
+
+## Check CO2_EMISSIONS_CURRENT
+
+Next we do the same for current emissions. Repeat the coding for total floor area using 0 and 1 TCO2/y as the threshold of interest.
+
+
+```{r, checkEmissions, fig.cap="Histogram of CO2_EMISSIONS_CURRENT"}
+ggplot2::ggplot(sotonUniqueEPCsDT, aes(x = CO2_EMISSIONS_CURRENT)) +
+  geom_histogram(binwidth = 1)
+
+nZeroEmissions <- nrow(sotonUniqueEPCsDT[CO2_EMISSIONS_CURRENT < 0])
+
+sotonUniqueEPCsDT[, emissionsFlag := ifelse(CO2_EMISSIONS_CURRENT < 0, "-ve CO2/y", NA)]
+sotonUniqueEPCsDT[, emissionsFlag := ifelse(CO2_EMISSIONS_CURRENT == 0, "0 CO2/y", emissionsFlag)]
+sotonUniqueEPCsDT[, emissionsFlag := ifelse(CO2_EMISSIONS_CURRENT > 0 & 
+                                     CO2_EMISSIONS_CURRENT <= 1, "0-1 TCO2/y", emissionsFlag)]
+sotonUniqueEPCsDT[, emissionsFlag := ifelse(CO2_EMISSIONS_CURRENT > 1, "1+ TCO2/y", emissionsFlag)]
+
+t <- sotonUniqueEPCsDT[, .(nObs = .N), keyby = .(emissionsFlag, hasWind, hasPV)]
+
+kableExtra::kable(t, caption = "Properties with CO2_EMISSIONS_CURRENT < 0 by presence of microgeneration")
+
+kableExtra::kable(round(100*(prop.table(table(sotonUniqueEPCsDT$emissionsFlag, 
+                                              sotonUniqueEPCsDT$consFlag, 
+                                              useNA = "always")
+                                        )
+                             )
+                        ,2)
+                  , caption = "% properties in CO2_EMISSIONS_CURRENT categories by ENERGY_CONSUMPTION_CURRENT categories")
+
+```
+
+There are `r nZeroEmissions` properties with 0 or negative emissions. It looks like they are also the properties with -ve kWh as we might expect. So we can safely ignore them.
+
+## Check ENVIRONMENT_IMPACT_CURRENT
+
+`Environmental impact` should decrease as emissions increase.
+
+```{r, checkImpact, fig.cap="Histogram of ENVIRONMENT_IMPACT_CURRENT"}
+ggplot2::ggplot(allEPCs_DT, aes(x = ENVIRONMENT_IMPACT_CURRENT)) +
+  geom_histogram()
+```
+
+So what is the relationship between ENVIRONMENT_IMPACT_CURRENT and CO2_EMISSIONS_CURRENT? It is not linear... (Figure \@ref(fig:checkEmissionsImpact)) and there are some interesting outliers.
+
+```{r, checkEmissionsImpact, fig.cap="PLot of ENVIRONMENT_IMPACT_CURRENT vs CO2_EMISSIONS_CURRENT"}
+
+ggplot2::ggplot(allEPCs_DT, aes(x = CO2_EMISSIONS_CURRENT, 
+                           y = ENVIRONMENT_IMPACT_CURRENT,
+                           colour = TENURE)) +
+  geom_point() +
+  facet_wrap(TENURE~.) +
+  theme(legend.position = "bottom")
+```
+
+## Check TOTAL_FLOOR_AREA
+
+Repeat the coding for total floor area using 5 m2 as the threshold of interest.
+
+```{r, checkFloorArea, fig.cap="Histogram of TOTAL_FLOOR_AREA"}
+ggplot2::ggplot(sotonUniqueEPCsDT, aes(x = TOTAL_FLOOR_AREA)) +
+  geom_histogram(binwidth = 1)
+
+nZeroFloorArea <- nrow(sotonUniqueEPCsDT[TOTAL_FLOOR_AREA < 0])
+
+sotonUniqueEPCsDT[, floorFlag := ifelse(TOTAL_FLOOR_AREA == 0, "0 m2", NA)]
+sotonUniqueEPCsDT[, floorFlag := ifelse(TOTAL_FLOOR_AREA > 0 & 
+                                     TOTAL_FLOOR_AREA <= 10, "0-5 m2", floorFlag)]
+sotonUniqueEPCsDT[, floorFlag := ifelse(TOTAL_FLOOR_AREA > 10, "5+ m2", floorFlag)]
+
+t <- with(sotonUniqueEPCsDT, table(floorFlag, consFlag))
+
+kableExtra::kable(round(100*prop.table(t),2), caption = "% properties with TOTAL_FLOOR_AREA category by ENERGY_CONSUMPTION_CURRENT category")
+
+kableExtra::kable(head(sotonUniqueEPCsDT[, .(BUILDING_REFERENCE_NUMBER, PROPERTY_TYPE, TOTAL_FLOOR_AREA, 
+                                    ENERGY_CONSUMPTION_CURRENT)][order(-TOTAL_FLOOR_AREA)], 10), 
+                  caption = "Top 10 by floor area (largest)")
+
+kableExtra::kable(head(sotonUniqueEPCsDT[, .(BUILDING_REFERENCE_NUMBER, PROPERTY_TYPE, TOTAL_FLOOR_AREA,
+                                    ENERGY_CONSUMPTION_CURRENT)][order(TOTAL_FLOOR_AREA)], 10), 
+                  caption = "Bottom 10 by floor area (smallest)")
+
+kableExtra::kable(round(100*prop.table(t),2), caption = "% properties with TOTAL_FLOOR_AREA category by ENERGY_CONSUMPTION_CURRENT category")
+
+```
+
+\@ref(tab:checkEmissions) shows that the properties with floor area of < 10m2 are not necessarily the ones with 0 or negative kWh values. Nevertheless they represent a small proportion of all properties.
+
+The scale of the x axis also suggests a few very large properties.
+
+## Data summary
+
+We have identified some issues with a small number of the properties in the EPC dataset. These are not unexpected given that much of the estimates rely on partial or presumed data. Data entry errors are also quite likely. As a result we exclude:
+
+ * any property where ENERGY_CONSUMPTION_CURRENT <= 0
+ * any property where TOTAL_FLOOR_AREA <= 5
+ * any property where CO2_EMISSIONS_CURRENT <= 0
+
+```{r, finalData}
+finalEPCDT <- sotonUniqueEPCsDT[ENERGY_CONSUMPTION_CURRENT > 0 &
+                      TOTAL_FLOOR_AREA > 5 &
+                      CO2_EMISSIONS_CURRENT > 0]
+
+skimr::skim(finalEPCDT)
+```
+
+This leaves us with a total of `r prettyNum(nrow(finalEPCDT), big.mark = ",")` properties.
+
+```{r, saveFinalData}
+of <- path.expand("~/data/EW_epc/domestic-E06000045-Southampton/finalClean.csv")
+data.table::fwrite(finalEPCDT, file = of)
+
+message("Gziping ", of)
+# Gzip it
+# in case it fails (it will on windows - you will be left with a .csv file)
+try(system( paste0("gzip -f '", of,"'"))) # include ' or it breaks on spaces
+message("Gzipped ", of)
+
+```
+
+
+# Check 'missing' EPC rates
+
+We know that we do not have EPC records for every dwelling. But how many are we missing? We will check this at MSOA level as it allows us to link to other MSOA level datasets that tell us how many households, dwellings or energy meters to expect. Arguably it would be better to do this at LSOA level but...
 
 First we'll use the BEIS 2018 MSOA level annual electricity data to estimate the number of meters (not properties) - some addresses can have 2 meters (e.g. standard & economy 7). This is more useful than the number of gas meters since not all dwellings have mains gas but all have an electricity meter.
 
@@ -241,13 +412,14 @@ We should not have single digit postcodes in the postcode data - i.e. S01 should
 ```{r, aggregateEPCsToPostcodes}
 # EPC
 # set up counters
-sotonUniqueEPCsDT[, epcIsSocialRent := ifelse(TENURE == "rental (social)", 1, 0)]
-sotonUniqueEPCsDT[, epcIsPrivateRent := ifelse(TENURE == "rental (private)", 1, 0)]
-sotonUniqueEPCsDT[, epcIsOwnerOcc := ifelse(TENURE == "owner-occupied", 1, 0)]
-sotonUniqueEPCsDT[, epcIsUnknownTenure := ifelse(TENURE == "NO DATA!" |
+# use final cleaned EPC data
+finalEPCDT[, epcIsSocialRent := ifelse(TENURE == "rental (social)", 1, 0)]
+finalEPCDT[, epcIsPrivateRent := ifelse(TENURE == "rental (private)", 1, 0)]
+finalEPCDT[, epcIsOwnerOcc := ifelse(TENURE == "owner-occupied", 1, 0)]
+finalEPCDT[, epcIsUnknownTenure := ifelse(TENURE == "NO DATA!" |
                                           TENURE == "" , 1, 0)]
 # aggregate EPCs to postcodes
-sotonEpcPostcodes_DT <- sotonUniqueEPCsDT[, .(nEPCs = .N,
+sotonEpcPostcodes_DT <- finalEPCDT[, .(nEPCs = .N,
                                               sumEPC_tCO2 = sum(CO2_EMISSIONS_CURRENT, na.rm = TRUE),
                                      n_epcIsSocialRent = sum(epcIsSocialRent, na.rm = TRUE),
                                      n_epcIsPrivateRent = sum(epcIsPrivateRent, na.rm = TRUE),
@@ -416,180 +588,19 @@ ggplot2::ggplot(t, aes(x = sumEpcMWh,
 outlier <- t[sumEpcMWh > 70000]
 ```
 
-\@ref(fig:energyMSOAPlot) shows that both of these are true. MSOAs with a high proportion of owner occupiers (and therefore more likely to have missing EPCs) tend to have higher observed energy demand than the EOC data suggests - they are above the reference line. MSOAs with a lower proportion of owner occupiers (and therefore more likely to have more complete EPC coverage) tend to be on or below the line. As before we have the same notable outlier (`r outlier$MSOACode`) and for the same reasons... In this case this produces a much higher energy demand estimate than the BEIS 2018 data records
+\@ref(fig:energyMSOAPlot) shows that both of these are true. MSOAs with a high proportion of owner occupiers (and therefore more likely to have missing EPCs) tend to have higher observed energy demand than the EOC data suggests - they are above the reference line. MSOAs with a lower proportion of owner occupiers (and therefore more likely to have more complete EPC coverage) tend to be on or below the line. As before we have the same notable outlier (`r outlier$MSOACode`) and for the same reasons... In this case this produces a much higher energy demand estimate than the BEIS 2018 data records.
 
-## Check ENERGY_CONSUMPTION_CURRENT
+# Save MSOA aggregates for re-use
 
-We recode the current energy consumption into categories for comparison with other low values and the presence of wind turbines/PV. We use -ve, 0 and 1 kWh as the thresholds of interest.
+Finally we save the MSOA table into the repo data directory for future use. We don;t usually advocate keeping data in a git repo but this is small, aggregated and [mostly harmless](https://en.wikipedia.org/wiki/Mostly_Harmless).
 
+```{r, saveMSOA}
+of <-  here::here("data", "sotonMSOAdata.csv")
 
-```{r, checkEnergy, fig.cap="Histogram of ENERGY_CONSUMPTION_CURRENT"}
-
-ggplot2::ggplot(sotonUniqueEPCsDT, aes(x = ENERGY_CONSUMPTION_CURRENT)) +
-  geom_histogram(binwidth = 5) + 
-  facet_wrap(~TENURE) +
-  geom_vline(xintercept = 0)
-
-underZero <- nrow(sotonUniqueEPCsDT[ENERGY_CONSUMPTION_CURRENT < 0])
-
-t <- with(sotonUniqueEPCsDT[ENERGY_CONSUMPTION_CURRENT < 0],
-     table(BUILT_FORM,TENURE))
-
-
-kableExtra::kable(t, caption = "Properties with ENERGY_CONSUMPTION_CURRENT < 0")
-
-# do we think this is caused by solar/wind?
-sotonUniqueEPCsDT[, hasWind := ifelse(WIND_TURBINE_COUNT > 0, "Yes", "No")]
-#table(sotonUniqueEPCsDT$hasWind)
-sotonUniqueEPCsDT[, hasPV := ifelse(PHOTO_SUPPLY >0, "Yes", "No")]
-#table(sotonUniqueEPCsDT$hasPV)
-sotonUniqueEPCsDT[, consFlag := ifelse(ENERGY_CONSUMPTION_CURRENT < 0, "-ve kWh/y", NA)]
-sotonUniqueEPCsDT[, consFlag := ifelse(ENERGY_CONSUMPTION_CURRENT == 0, "0 kWh/y", consFlag)]
-sotonUniqueEPCsDT[, consFlag := ifelse(ENERGY_CONSUMPTION_CURRENT > 0 & 
-                                     ENERGY_CONSUMPTION_CURRENT <= 1, "0-1 kWh/y", consFlag)]
-sotonUniqueEPCsDT[, consFlag := ifelse(ENERGY_CONSUMPTION_CURRENT > 1, "1+ kWh/y", consFlag)]
-
-t <- sotonUniqueEPCsDT[, .(nObs = .N), keyby = .(consFlag, hasWind, hasPV)]
-
-kableExtra::kable(t, caption = "Properties in ENERGY_CONSUMPTION_CURRENT category by presence of microgeneration")
-
+data.table::fwrite(sotonMSOA_DT, of)
+message("Saved ", nrow(sotonMSOA_DT), " rows of data.")
 ```
 
-There are only `r underZero` dwellings where ENERGY_CONSUMPTION_CURRENT < 0 and none of them seem to have PV or a wind turbine so we can probably ignore them.
-
-```{r, energyTenure, fig.cap="Comparing distributions of ENERGY_CONSUMPTION_CURRENT by tenure and built form"}
-# repeat with a density plot to allow easy overlap 
-# exclude those with no data
-ggplot2::ggplot(sotonUniqueEPCsDT[TENURE != "NO DATA!" &
-                           TENURE != "unknown" &
-                           TENURE != ""], aes(x = ENERGY_CONSUMPTION_CURRENT, 
-                                              fill = TENURE, alpha = 0.2)) +
-  geom_density() +
-  facet_wrap(~BUILT_FORM) +
-  guides(alpha = FALSE) +
-  theme(legend.position = "bottom")
-```
-
-## Check CO2_EMISSIONS_CURRENT
-
-Next we do the same for current emissions. Repeat the coding for total floor area using 0 and 1 TCO2/y as the threshold of interest.
-
-
-```{r, checkEmissions, fig.cap="Histogram of CO2_EMISSIONS_CURRENT"}
-ggplot2::ggplot(sotonUniqueEPCsDT, aes(x = CO2_EMISSIONS_CURRENT)) +
-  geom_histogram(binwidth = 1)
-
-nZeroEmissions <- nrow(sotonUniqueEPCsDT[CO2_EMISSIONS_CURRENT < 0])
-
-sotonUniqueEPCsDT[, emissionsFlag := ifelse(CO2_EMISSIONS_CURRENT < 0, "-ve CO2/y", NA)]
-sotonUniqueEPCsDT[, emissionsFlag := ifelse(CO2_EMISSIONS_CURRENT == 0, "0 CO2/y", emissionsFlag)]
-sotonUniqueEPCsDT[, emissionsFlag := ifelse(CO2_EMISSIONS_CURRENT > 0 & 
-                                     CO2_EMISSIONS_CURRENT <= 1, "0-1 TCO2/y", emissionsFlag)]
-sotonUniqueEPCsDT[, emissionsFlag := ifelse(CO2_EMISSIONS_CURRENT > 1, "1+ TCO2/y", emissionsFlag)]
-
-t <- sotonUniqueEPCsDT[, .(nObs = .N), keyby = .(emissionsFlag, hasWind, hasPV)]
-
-kableExtra::kable(t, caption = "Properties with CO2_EMISSIONS_CURRENT < 0 by presence of microgeneration")
-
-kableExtra::kable(round(100*(prop.table(table(sotonUniqueEPCsDT$emissionsFlag, 
-                                              sotonUniqueEPCsDT$consFlag, 
-                                              useNA = "always")
-                                        )
-                             )
-                        ,2)
-                  , caption = "% properties in CO2_EMISSIONS_CURRENT categories by ENERGY_CONSUMPTION_CURRENT categories")
-
-```
-
-There are `r nZeroEmissions` properties with 0 or negative emissions. It looks like they are also the properties with -ve kWh as we might expect. So we can safely ignore them.
-
-## Check ENVIRONMENT_IMPACT_CURRENT
-
-`Environmental impact` should decrease as emissions increase.
-
-```{r, checkImpact, fig.cap="Histogram of ENVIRONMENT_IMPACT_CURRENT"}
-ggplot2::ggplot(allEPCs_DT, aes(x = ENVIRONMENT_IMPACT_CURRENT)) +
-  geom_histogram()
-```
-
-So what is the relationship between ENVIRONMENT_IMPACT_CURRENT and CO2_EMISSIONS_CURRENT? It is not linear... (Figure \@ref(fig:checkEmissionsImpact)) and there are some interesting outliers.
-
-```{r, checkEmissionsImpact, fig.cap="PLot of ENVIRONMENT_IMPACT_CURRENT vs CO2_EMISSIONS_CURRENT"}
-
-ggplot2::ggplot(allEPCs_DT, aes(x = CO2_EMISSIONS_CURRENT, 
-                           y = ENVIRONMENT_IMPACT_CURRENT,
-                           colour = TENURE)) +
-  geom_point() +
-  facet_wrap(TENURE~.) +
-  theme(legend.position = "bottom")
-```
-
-## Check TOTAL_FLOOR_AREA
-
-Repeat the coding for total floor area using 5 m2 as the threshold of interest.
-
-```{r, checkFloorArea, fig.cap="Histogram of TOTAL_FLOOR_AREA"}
-ggplot2::ggplot(sotonUniqueEPCsDT, aes(x = TOTAL_FLOOR_AREA)) +
-  geom_histogram(binwidth = 1)
-
-nZeroFloorArea <- nrow(sotonUniqueEPCsDT[TOTAL_FLOOR_AREA < 0])
-
-sotonUniqueEPCsDT[, floorFlag := ifelse(TOTAL_FLOOR_AREA == 0, "0 m2", NA)]
-sotonUniqueEPCsDT[, floorFlag := ifelse(TOTAL_FLOOR_AREA > 0 & 
-                                     TOTAL_FLOOR_AREA <= 10, "0-5 m2", floorFlag)]
-sotonUniqueEPCsDT[, floorFlag := ifelse(TOTAL_FLOOR_AREA > 10, "5+ m2", floorFlag)]
-
-t <- with(sotonUniqueEPCsDT, table(floorFlag, consFlag))
-
-kableExtra::kable(round(100*prop.table(t),2), caption = "% properties with TOTAL_FLOOR_AREA category by ENERGY_CONSUMPTION_CURRENT category")
-
-kableExtra::kable(head(sotonUniqueEPCsDT[, .(BUILDING_REFERENCE_NUMBER, PROPERTY_TYPE, TOTAL_FLOOR_AREA, 
-                                    ENERGY_CONSUMPTION_CURRENT)][order(-TOTAL_FLOOR_AREA)], 10), 
-                  caption = "Top 10 by floor area (largest)")
-
-kableExtra::kable(head(sotonUniqueEPCsDT[, .(BUILDING_REFERENCE_NUMBER, PROPERTY_TYPE, TOTAL_FLOOR_AREA,
-                                    ENERGY_CONSUMPTION_CURRENT)][order(TOTAL_FLOOR_AREA)], 10), 
-                  caption = "Bottom 10 by floor area (smallest)")
-
-kableExtra::kable(round(100*prop.table(t),2), caption = "% properties with TOTAL_FLOOR_AREA category by ENERGY_CONSUMPTION_CURRENT category")
-
-```
-
-\@ref(tab:checkEmissions) shows that the properties with floor area of < 10m2 are not necessarily the ones with 0 or negative kWh values. Nevertheless they represent a small proportion of all properties.
-
-The scale of the x axis also suggests a few very large properties.
-
-## Data summary
-
-We have identified some issues with a small number of the properties in the EPC dataset. These are not unexpected given that much of the estimates rely on partial or presumed data. Data entry errors are also quite likely. As a result we exclude:
-
- * any property where ENERGY_CONSUMPTION_CURRENT <= 0
- * any property where TOTAL_FLOOR_AREA <= 5
- * any property where CO2_EMISSIONS_CURRENT <= 0
-
-```{r, finalData}
-finalDT <- sotonUniqueEPCsDT[ENERGY_CONSUMPTION_CURRENT > 0 &
-                      TOTAL_FLOOR_AREA > 5 &
-                      CO2_EMISSIONS_CURRENT > 0]
-
-skimr::skim(finalDT)
-```
-
-This leaves us with a total of `r prettyNum(nrow(finalDT), big.mark = ",")` properties.
-
-```{r, saveFinalData}
-of <- path.expand("~/data/EW_epc/domestic-E06000045-Southampton/finalClean.csv")
-data.table::fwrite(finalDT, file = of)
-
-message("Gziping ", of)
-# Gzip it
-# in case it fails (it will on windows - you will be left with a .csv file)
-try(system( paste0("gzip -f '", of,"'"))) # include ' or it breaks on spaces
-message("Gzipped ", of)
-
-```
-
- 
 # R packages used
 
  * rmarkdown [@rmarkdown]
