@@ -38,540 +38,63 @@ library(kableExtra)
 library(readxl)
 ```
 
-# Energy Performance Certificates (EPCs)
+# Preamble
 
-Apart from a few exempted buildings, a dwelling must have an EPC when constructed, sold or let. This means that over time we will have an EPC for an increasing number of properties and we should _already_ have EPCs for all rented properties.
+There's a lot of talk about Carbon Taxes right now and some early signs that the UK Government will apply them to (larger) businesses post-Brexit (i.e. post-ETS). There is currently not much noise on the idea of applying them to households but it is always a possibility given the acceptance of using tax-based incentives to attempt to suppress the consumption of bad stuff. Think tobacco, alcohol and sugar.
 
-EPCs are not necessarily up to date. For example if a property has not been sold or let since a major upgrade, the effects of that upgrade may not be visible in the data.
+But what if we did? How much would it raise and from whom?
 
-Further reading: 
+There is no simple answer to this hypothetical question since it depends what [Scope of emissions](https://compareyourfootprint.com/difference-scope-1-2-3-emissions/) we consider and in what detail. Bradky speaking the scopes are:
 
- * https://epc.opendatacommunities.org/docs/guidance#technical_notes
- * https://en.wikipedia.org/wiki/Energy_Performance_Certificate_(United_Kingdom)#Procedure
+ * Scope 1 – All direct emissions caused by burning something (gas, oil, wood, coal etc);
+ * Scope 2 - Indirect emissions from electricity purchased and used - the carbon intensity of these (kg Co2/kWh) depends on how it is generated and also, of course, on which tariff you have. A 100% renewable electrons tariff will have a carbon intensity of ~0. If you have a 'normal' tariff you will just have to take what the [grid offers](https://www.carbonintensity.org.uk/);
+ * Scope 3 - All Other Indirect Emissions from things you do - e.g. the things you buy (food, clothes, gadgets etc etc)
 
-> check what feeds in automatically e.f. RHI installs etc
+Estimating the emissions from [Scope 3](https://www.carbontrust.com/resources/briefing-what-are-scope-3-emissions) is [notably difficult](https://www.sciencedirect.com/science/article/pii/S0921800913000980) so for now we're going to make a #backOfaFagPacket estimate of the residential emissions from Scopes 1 and 2 in Southampton and see what a Carbon Tax applied to these emissions would look like.
 
-We have to assume the data we have is the _current state of play_ for these dwellings.
+# How?
 
-# Southampton EPCs
+In an ideal world we would know the fuel (gas, oil, coal, wood, electricity) inputs per year for each dwelling/household in Southampton together with details of how these are used (some methods release more carbon dioxide than others). But we don't. Once the [Smart Energy Research Laboratory](https://serl.ac.uk) really gets going we will have kWh gas and electricity data for a representative sample of British homes (but not a larger enough sample from Southampton to be helpful here). But not yet and even then it may not include other fuels... Other research has used [UK data on family expenditures on Scope 1-3 'consumption'](https://www.sciencedirect.com/science/article/pii/S0921800913000980) but we can't apply that directly to Southampton.
 
-```{r, loadSoton}
-df <- path.expand("~/data/EW_epc/domestic-E06000045-Southampton/certificates.csv")
-allEPCs_DT <- data.table::fread(df)
-```
+So what to do? There are a number of possible approaches and we're going to compare two of them:
 
-The EPC data file has `r nrow(allEPCs_DT)` records for Southampton and `r ncol(allEPCs_DT)` variables. We're not interested in all of these, we want:
-
- * PROPERTY_TYPE: Describes the type of property such as House, Flat, Maisonette etc. This is the type differentiator for dwellings;
- * BUILT_FORM: The building type of the Property e.g. Detached, Semi-Detached, Terrace etc. Together with the Property Type, the Build Form produces a structured description of the property;
- * ENVIRONMENT_IMPACT_CURRENT: A measure of the property's current impact on the environment in terms of carbon dioxide (CO₂) emissions. The higher the rating the lower the CO₂ emissions. (CO₂ emissions in tonnes / year) **NB this is a categorised scale calculated from CO2_EMISSIONS_CURRENT**;
- * ENERGY_CONSUMPTION_CURRENT: Current estimated total energy consumption for the property in a 12 month period (**kWh/m2**). Displayed on EPC as the current primary energy use per square metre of floor area. **Nb: this covers heat and hot water (and lightng?)**
- * CO2_EMISSIONS_CURRENT: CO₂ emissions per year in tonnes/year **NB: this is calculated from the modelled kWh energy input using (possibly) outdated carbon intensity values**;
- * TENURE: Describes the tenure type of the property. One of: Owner-occupied; Rented (social); Rented (private).
+ * Use the most recent [BEIS sub-national electricity and gas demand data](https://www.gov.uk/government/publications/regional-energy-data-guidance-note) for ~30 local areas (MSOAs) in Southampton and estimate the CO2 emissions at MSOA and (by summing them) at City level;
+ * Use the modelled CO2 emissions per dwelling data in the [Energy Performance Certificate data](https://epc.opendatacommunities.org/docs/guidance) for Southampton to do the same thing.
  
- We're also going to keep:
- 
-  * WIND_TURBINE_COUNT: Number of wind turbines; 0 if none;
-  * PHOTO_SUPPLY: Percentage of photovoltaic area as a percentage of total roof area. 0% indicates that a Photovoltaic Supply is not present in the property;
-  * TOTAL_FLOOR_AREA: The total useful floor area is the total of all enclosed spaces measured to the internal face of the external walls, i.e. the gross floor area as measured in accordance with the guidance issued from time to time by the Royal Institute of Chartered Surveyors or by a body replacing that institution. (m²) - to allow for the calculation of total energy demand;
-  * POSTCODE - to allow linkage to other datasets
-  * LOCAL_AUTHORITY_LABEL - for checking
-  
-These may indicate 'non-grid' energy inputs.
- 
-If an EPC has been updated or refreshed, the EPC dataset will hold multiple EPC records for that property. We will just select the most recent. 
+Unfortunately there are problems with both which we have reported in [excessive detail elsewhere](epcChecks.html). In summary:
 
-```{r, checkData}
-# select just these vars
-dt <- allEPCs_DT[, .(BUILDING_REFERENCE_NUMBER, LMK_KEY, LODGEMENT_DATE, PROPERTY_TYPE, BUILT_FORM,
-                ENVIRONMENT_IMPACT_CURRENT, ENERGY_CONSUMPTION_CURRENT, CO2_EMISSIONS_CURRENT, TENURE,
-                PHOTO_SUPPLY, WIND_TURBINE_COUNT, TOTAL_FLOOR_AREA, 
-                POSTCODE, LOCAL_AUTHORITY_LABEL)]
+ * the most recent BEIS data is from 2018. This will not include dwellings and households that did not exist (new builds) at that time, nor account for any building stock improvements since then;
+ * the EPC records are incomplete since an EPC is only created when a dwelling is rented or sold (since 2007);
+ * the EPC data have some oddities that mean we have to [filter out a few 'impossible' values](epcChecks.html#36_Data_summary).
 
-# select most recent record within BUILDING_REFERENCE_NUMBER - how?
-# better check this is doing so
-setkey(dt,BUILDING_REFERENCE_NUMBER, LODGEMENT_DATE) # sort by date within reference number
-sotonUniqueEPCsDT <- unique(dt, by = "BUILDING_REFERENCE_NUMBER",
-                   fromLast = TRUE) # which one does it take?
+This means that both datasets are imperfect for the job. But they're about as close as we can currently get.
 
-test1 <- allEPCs_DT[, .(min1 = min(LODGEMENT_DATE), 
-                        nRecords = .N), 
-                    keyby = .(BUILDING_REFERENCE_NUMBER)]
+So with the usual #backOfaFagPacket health warning, let's try.
 
-test2 <- sotonUniqueEPCsDT[, .(min2 = min(LODGEMENT_DATE)), 
-                           keyby = .(BUILDING_REFERENCE_NUMBER)]
-t <- test1[test2]
-t[, diff := min2 - min1]
-
-summary(t[nRecords > 1]) # diff is always >= 0 so min2 (after unique) is always > min1
-# confirms fromLast = TRUE has selected the most recent within BUILDING_REFERENCE_NUMBER
-
-skimr::skim(sotonUniqueEPCsDT)
-```
-
-As we can see that we have `r uniqueN(dt$BUILDING_REFERENCE_NUMBER)` unique property reference numbers. We can also see some strangeness. In some cases we seem to have:
- 
- * negative energy consumption;
- * negative emissions;
- * 0 floor area
-
-This is not surprising since the kWh/y and TCO2/y values are estimated using a model but before we go any further we'd better check if these are significant in number.
-
-## Check 'missing' EPC rates
-
-We will do this mostly at MSOA level as it allows us to link to other MSOA level datasets. Arguably it would be better to do this at LSOA level but...
-
-First we'll use the BEIS 2018 MSOA level annual electricity data to estimate the number of meters (not properties) - some addresses can have 2 meters (e.g. standard & economy 7). This is more useful than the number of gas meters since not all dwellings have mains gas but all have an electricity meter.
-
-```{r, checkBEIS}
-beisElecDT <- data.table::fread("~/data/beis/MSOA_DOM_ELEC_csv/MSOA_ELEC_2018.csv")
-sotonElecDT <- beisElecDT[LAName %like% "Southampton", .(nElecMeters = METERS,  
-                                                         beisElecMWh = KWH/1000, 
-                                                         MSOACode, LAName)
-                          ]
-
-
-beisGasDT <- data.table::fread("~/data/beis/MSOA_DOM_GAS_csv/MSOA_GAS_2018.csv")
-sotonGasDT <- beisGasDT[LAName %like% "Southampton", .(nGasMeters = METERS,  
-                                                         beisGasMWh = KWH/1000, 
-                                                         MSOACode)]
-
-setkey(sotonElecDT, MSOACode)
-setkey(sotonGasDT, MSOACode)
-sotonEnergyDT <- sotonGasDT[sotonElecDT]
-sotonEnergyDT[, beisEnergyMWh := beisElecMWh + beisGasMWh]
-#head(sotonEnergyDT)
-```
-
-Next we'll check for the number of households reported by the 2011 Census.
-
-> would be better to use dwellings but this gives us tenure
-
-```{r, checkCensus}
-#censusDT <- data.table::fread(path.expand("~/data/"))
-# IMD ----
-deprivationDT <- data.table::fread(path.expand("~/data/census2011/2011_MSOA_deprivation.csv"))
-deprivationDT[, totalHouseholds := `Household Deprivation: All categories: Classification of household deprivation; measures: Value`]
-deprivationDT[, MSOACode := `geography code`]
-setkey(deprivationDT, MSOACode)
-setkey(sotonElecDT, MSOACode)
-# link LA name from Soton elec for now
-sotonDep_DT <- deprivationDT[sotonElecDT[, .(MSOACode, LAName)]]
-sotonDep_DT[, nHHs_deprivation := `Household Deprivation: All categories: Classification of household deprivation; measures: Value`]
-
-#sotonDep_DT[, .(nHouseholds = sum(totalHouseholds)), keyby = .(LAName)]
-
-# census tenure ----
-sotonTenureDT <- data.table::fread(path.expand("~/data/census2011/2011_MSOA_householdTenure_Soton.csv"))
-
-sotonTenureDT[, census2011_socialRent := `Tenure: Social rented; measures: Value`]
-sotonTenureDT[, census2011_privateRent := `Tenure: Private rented; measures: Value`]
-sotonTenureDT[, census2011_ownerOccupy := `Tenure: Owned; measures: Value`]
-sotonTenureDT[, census2011_other := `Tenure: Living rent free; measures: Value`]
-sotonTenureDT[, MSOACode := `geography code`]
-
-sotonTenureDT[, hhCheck := census2011_socialRent + census2011_privateRent + census2011_ownerOccupy + census2011_other]
-sotonTenureDT[, nHHs_tenure := `Tenure: All households; measures: Value`]
-
-# summary(sotonTenureDT[, .(hhCheck, nHHs_tenure)])
-# might not quite match due to cell perturbation etc?
-
-# join em ----
-setkey(sotonDep_DT, MSOACode)
-setkey(sotonTenureDT, MSOACode)
-
-sotonCensus2011_DT <- sotonTenureDT[sotonDep_DT]
-
-t <- sotonCensus2011_DT[, .(sum_Deprivation = sum(nHHs_deprivation),
-                            sum_Tenure = sum(nHHs_tenure)), keyby = .(LAName)]
-kableExtra::kable(t, caption = "Census derived household counts")
-```
-
-That's lower (as expected) but doesn't allow for dwellings that were empty on census night.
-
-```{r, checkPostcodes}
-# Postcodes don't help - no count of addresses in the data (there used to be??)
-# but we can use it to check which Soton postcodes are missing from the EPC file
-soPostcodesDT <- data.table::fread(path.expand("~/data/UK_postcodes/NSPL_AUG_2020_UK/Data/multi_csv/NSPL_AUG_2020_UK_SO.csv"))
-
-soPostcodesDT <- soPostcodesDT[is.na(doterm)] # keep current
-
-sotonPostcodesDT <- soPostcodesDT[laua == "E06000045"] # keep Southampton City
-
-sotonPostcodesReducedDT <- sotonPostcodesDT[, .(pcd, pcd2, pcds, laua, msoa11, lsoa11)]
-
-sotonPostcodesReducedDT[, c("pc_chunk1","pc_chunk2" ) := tstrsplit(pcds, 
-                                                                   split = " "
-                                                                   )
-                        ]
-sotonPostcodesReducedDT[, .(nEPCs = .N), keyby = .(pc_chunk1)]
-```
-We should not have single digit postcodes in the postcode data - i.e. S01 should not be there (since 1993). Southampton City is unusual in only having [double digit postcodes](https://en.wikipedia.org/wiki/SO_postcode_area).
-
-```{r, aggregateEPCsToPostcodes}
-# EPC
-# set up counters
-sotonUniqueEPCsDT[, epcIsSocialRent := ifelse(TENURE == "rental (social)", 1, 0)]
-sotonUniqueEPCsDT[, epcIsPrivateRent := ifelse(TENURE == "rental (private)", 1, 0)]
-sotonUniqueEPCsDT[, epcIsOwnerOcc := ifelse(TENURE == "owner-occupied", 1, 0)]
-sotonUniqueEPCsDT[, epcIsUnknownTenure := ifelse(TENURE == "NO DATA!" |
-                                          TENURE == "" , 1, 0)]
-# aggregate EPCs to postcodes
-sotonEpcPostcodes_DT <- sotonUniqueEPCsDT[, .(nEPCs = .N,
-                                              sumEPC_tCO2 = sum(CO2_EMISSIONS_CURRENT, na.rm = TRUE),
-                                     n_epcIsSocialRent = sum(epcIsSocialRent, na.rm = TRUE),
-                                     n_epcIsPrivateRent = sum(epcIsPrivateRent, na.rm = TRUE),
-                                     n_epcIsOwnerOcc = sum(epcIsOwnerOcc, na.rm = TRUE),
-                                     n_epcIsUnknownTenure = sum(epcIsUnknownTenure, na.rm = TRUE),
-                               sumEpcMWh = sum(ENERGY_CONSUMPTION_CURRENT* TOTAL_FLOOR_AREA)/1000), # crucial as ENERGY_CONSUMPTION_CURRENT = kWh/m2
-                           keyby = .(POSTCODE, LOCAL_AUTHORITY_LABEL)]
-
-sotonEpcPostcodes_DT[, c("pc_chunk1","pc_chunk2" ) := tstrsplit(POSTCODE, 
-                                                                   split = " "
-                                                                   )
-                        ]
-sotonEpcPostcodes_DT[, .(nEPCs = .N), keyby = .(pc_chunk1)]
-
-# check original EPC data for Soton - which postcodes are covered?
-allEPCs_DT[, c("pc_chunk1","pc_chunk2" ) := tstrsplit(POSTCODE, 
-                                                                   split = " "
-                                                                   )
-                        ]
-allEPCs_DT[, .(nEPCs = .N), keyby = .(pc_chunk1)]
-```
-It looks like we have EPCs for each postcode sector which is good.
-
-
-```{r, matchPostcodesToEPCPostcodes}
-# match the EPC postcode summaries to the postcode extract
-sotonPostcodesReducedDT[, POSTCODE_s := stringr::str_remove(pcds, " ")]
-setkey(sotonPostcodesReducedDT, POSTCODE_s)
-sotonPostcodesReducedDT[, MSOACode := msoa11]
-message("Number of postcodes: ",uniqueN(sotonPostcodesReducedDT$POSTCODE_s))
-
-sotonEpcPostcodes_DT[, POSTCODE_s := stringr::str_remove(POSTCODE, " ")]
-setkey(sotonEpcPostcodes_DT, POSTCODE_s)
-message("Number of postcodes with EPCs: ",uniqueN(sotonEpcPostcodes_DT$POSTCODE_s))
-
-dt <- sotonEpcPostcodes_DT[sotonPostcodesReducedDT]
-
-# aggregate to MSOA - watch for NAs where no EPCs in a given postcode
-sotonEpcMSOA_DT <- dt[, .(nEPCs = sum(nEPCs, na.rm = TRUE), 
-                          sumEPC_tCO2 = sum(sumEPC_tCO2, na.rm = TRUE),
-                                        n_epcIsSocialRent = sum(n_epcIsSocialRent, na.rm = TRUE),
-                                        n_epcIsPrivateRent = sum(n_epcIsPrivateRent, na.rm = TRUE),
-                                        n_epcIsOwnerOcc = sum(n_epcIsOwnerOcc, na.rm = TRUE),
-                                        n_epcIsUnknownTenure = sum(n_epcIsUnknownTenure, na.rm = TRUE),
-                                        sumEpcMWh = sum(sumEpcMWh, na.rm = TRUE)
-                                        ),
-                                    keyby = .(MSOACode) # change name on the fly for easier matching
-                                    ] 
-
-#summary(sotonEpcMSOA_DT)
-```
-
-So we have some postcodes with no EPCs.
-
-Join the estimates together at MSOA level for comparison. There are `r uniqueN(sotonElecDT$MSOACode)` MSOAs in Southampton.
-
-
-```{r, joinMSOA}
-# 32 LSOAs in Soton
-# add deprivation
-setkey(sotonEnergyDT, MSOACode)
-setkey(sotonCensus2011_DT, MSOACode)
-setkey(sotonEpcMSOA_DT, MSOACode)
-
-sotonMSOA_DT <- sotonCensus2011_DT[sotonEnergyDT]
-#names(sotonMSOA_DT)
-sotonMSOA_DT <- sotonEpcMSOA_DT[sotonMSOA_DT]
-#names(sotonMSOA_DT)
-
-# add MSOA names from the postcode LUT
-
-msoaNamesDT <- data.table::as.data.table(readxl::read_xlsx(path.expand("~/data/UK_postcodes/NSPL_AUG_2020_UK/Documents/MSOA (2011) names and codes UK as at 12_12.xlsx")))
-msoaNamesDT[, MSOACode := MSOA11CD]
-msoaNamesDT[, MSOAName := MSOA11NM]
-setkey(msoaNamesDT, MSOACode)
-
-sotonMSOA_DT <- msoaNamesDT[sotonMSOA_DT]
-
-#names(sotonMSOA_DT)
-```
-
-```{r, compareEpcEstimates}
-t <- sotonMSOA_DT[, .(nHouseholds_2011 = sum(nHHs_tenure),
-                      nElecMeters_2018 = sum(nElecMeters),
-                      nEPCs_2020 = sum(nEPCs),
-                      sumEPCMWh = sum(sumEpcMWh),
-                  sumBEISMWh = sum(beisEnergyMWh),
-                  sumEPC_tCO2 = sum(sumEPC_tCO2)
-                  )]
-
-kableExtra::kable(t, caption = "Comparison of different estimates of the number of dwellings and energy demand") %>%
-  kable_styling()
-
-nHouseholds_2011f <- sum(sotonMSOA_DT$nHHs_tenure)
-nElecMeters_2018f <- sum(sotonMSOA_DT$elecMeters)
-nEPCs_2020f <- sum(sotonMSOA_DT$nEPCs)
-
-makePC <- function(x,y,r){
-  # make a percent of x/y and round it to r decimal places
-  pc <- round(100*(x/y),r)
-  return(pc)
-}
-
-```
-
-We can see that the number of EPCs we have is:
-
-  * `r makePC(nEPCs_2020f,nHouseholds_2011f,1)`% of Census 2011 households
-  * `r makePC(nEPCs_2020f,nElecMeters_2018f,1)`% of the recorded 2018 electricity meters
-
-We can also see that despite having 'missing' EPCs, the estimated total EPC-derived energy demand is marginally higher than the BEIS-derived weather corrected energy demand data. Given that the BEIS data accounts for all heating, cooking, hot water, lighting and appliance use we would expect the EPC data to be lower _even if no EPCs were missing..._
-
-```{r, missingEPCbyMSOA, fig.cap="% 'missing' rates comparison"}
-
-sotonMSOA_DT[, dep0_pc := 100*(`Household Deprivation: Household is not deprived in any dimension; measures: Value`/nHHs_deprivation)]
-sotonMSOA_DT[, socRent_pc := 100*(census2011_socialRent/nHHs_tenure)]
-sotonMSOA_DT[, privRent_pc := 100*(census2011_privateRent/nHHs_tenure)]
-sotonMSOA_DT[, ownerOcc_pc := 100*(census2011_ownerOccupy/nHHs_tenure)]
-
-t <- sotonMSOA_DT[, .(MSOAName, MSOACode, nHHs_tenure,nElecMeters,nEPCs,
-                      dep0_pc, socRent_pc, privRent_pc, ownerOcc_pc,sumEpcMWh, beisEnergyMWh )]
-
-t[, pc_missingHH := makePC(nEPCs,nHHs_tenure,1)]
-t[, pc_missingMeters := makePC(nEPCs,nElecMeters,1)]
-t[, pc_energyBEIS := makePC(sumEpcMWh,beisEnergyMWh,1)]
-
-kableExtra::kable(t[order(-pc_missingHH)], digits = 2, caption = "EPC records as a % of n census households and n meters per MSOA") %>%
-  kable_styling()
-
-ggplot2::ggplot(t, aes(x = pc_missingHH, 
-                       y = pc_missingMeters,
-                       colour = round(ownerOcc_pc))) +
-  geom_abline(alpha = 0.2, slope=1, intercept=0) +
-  geom_point() +
-  scale_color_continuous(name = "% owner occupiers \n(Census 2011)", high = "red", low = "green") +
-  #theme(legend.position = "bottom") +
-  labs(x = "EPCs 2020 as % of Census 2011 households",
-       y = "EPCs 2020 as % of electricity meters 2018",
-       caption = "x = y line included for clarity")
-
-outlierMSOA <- t[pc_missingHH > 100]
-```
-Figure \@ref(tab:missingEPCbyMSOA) suggests that rates vary considerably by MSOA but are relatively consistent across the two baseline 'truth' estimates with the exception of `r outlierMSOA$MSOACode` which appears to have many more EPCs than Census 2011 households. It is worth noting that [this MSOA](https://www.localhealth.org.uk/#c=report&chapter=c01&report=r01&selgeo1=msoa_2011.E02003577&selgeo2=eng.E92000001) covers the city centre and dock areas which have had substantial new build since 2011 and so may have households inhabiting dwellings that did not exist at Census 2011. This is also supported by the considerably higher EPC derived energy demand data compared to BEIS's 2018 data - although it suggests the dwellings are either very new (since 2018) or are yet to be occupied.
-
-As we would expect those MSOAs with the lowest EPC coverage on both baseline measures tend to have higher proportions of owner occupiers. 
-
-We can use the same approach to compare estimates of total energy demand at the MSOA level. To do this we compare:
-
- * estimated total energy demand in MWh/year derived from the EPC estimates. This energy only relates to `current primary energy` (space heating, hot water and lighting) and of course also suffers from missing EPCs (see above)
- * observed electricity and gas demand collated by BEIS for their sub-national statistical series. This applies to all domestic energy demand but the most recent data is for 2018 so will suffer from the absence of dwellings that are present in the most recent EPC data (see above).
-
-We should therefore not expect the values to match but we might reasonably expect a correlation.
- 
-```{r, energyMSOAPlot, fig.cap="Energy demand comparison"}
-ggplot2::ggplot(t, aes(x = sumEpcMWh, 
-                       y = beisEnergyMWh,
-                       colour = round(ownerOcc_pc))) +
-  geom_abline(alpha = 0.2, slope=1, intercept=0) +
-  geom_point() +
-  scale_color_continuous(name = "% owner occupiers \n(Census 2011)", high = "red", low = "green") +
-  #theme(legend.position = "bottom") +
-  labs(x = "EPC 2020 derived total MWh/year",
-       y = "BEIS 2018 derived total MWh/year",
-       caption = "x = y line included for clarity")
-
-outlier <- t[sumEpcMWh > 70000]
-```
-
-\@ref(fig:energyMSOAPlot) shows that both of these are true. MSOAs with a high proportion of owner occupiers (and therefore more likely to have missing EPCs) tend to have higher observed energy demand than the EOC data suggests - they are above the reference line. MSOAs with a lower proportion of owner occupiers (and therefore more likely to have more complete EPC coverage) tend to be on or below the line. As before we have the same notable outlier (`r outlier$MSOACode`) and for the same reasons... In this case this produces a much higher energy demand estimate than the BEIS 2018 data records
-
-## Check ENERGY_CONSUMPTION_CURRENT
-
-We recode the current energy consumption into categories for comparison with other low values and the presence of wind turbines/PV. We use -ve, 0 and 1 kWh as the thresholds of interest.
-
-
-```{r, checkEnergy, fig.cap="Histogram of ENERGY_CONSUMPTION_CURRENT"}
-
-ggplot2::ggplot(sotonUniqueEPCsDT, aes(x = ENERGY_CONSUMPTION_CURRENT)) +
-  geom_histogram(binwidth = 5) + 
-  facet_wrap(~TENURE) +
-  geom_vline(xintercept = 0)
-
-underZero <- nrow(sotonUniqueEPCsDT[ENERGY_CONSUMPTION_CURRENT < 0])
-
-t <- with(sotonUniqueEPCsDT[ENERGY_CONSUMPTION_CURRENT < 0],
-     table(BUILT_FORM,TENURE))
-
-
-kableExtra::kable(t, caption = "Properties with ENERGY_CONSUMPTION_CURRENT < 0")
-
-# do we think this is caused by solar/wind?
-sotonUniqueEPCsDT[, hasWind := ifelse(WIND_TURBINE_COUNT > 0, "Yes", "No")]
-#table(sotonUniqueEPCsDT$hasWind)
-sotonUniqueEPCsDT[, hasPV := ifelse(PHOTO_SUPPLY >0, "Yes", "No")]
-#table(sotonUniqueEPCsDT$hasPV)
-sotonUniqueEPCsDT[, consFlag := ifelse(ENERGY_CONSUMPTION_CURRENT < 0, "-ve kWh/y", NA)]
-sotonUniqueEPCsDT[, consFlag := ifelse(ENERGY_CONSUMPTION_CURRENT == 0, "0 kWh/y", consFlag)]
-sotonUniqueEPCsDT[, consFlag := ifelse(ENERGY_CONSUMPTION_CURRENT > 0 & 
-                                     ENERGY_CONSUMPTION_CURRENT <= 1, "0-1 kWh/y", consFlag)]
-sotonUniqueEPCsDT[, consFlag := ifelse(ENERGY_CONSUMPTION_CURRENT > 1, "1+ kWh/y", consFlag)]
-
-t <- sotonUniqueEPCsDT[, .(nObs = .N), keyby = .(consFlag, hasWind, hasPV)]
-
-kableExtra::kable(t, caption = "Properties in ENERGY_CONSUMPTION_CURRENT category by presence of microgeneration")
-
-```
-
-There are only `r underZero` dwellings where ENERGY_CONSUMPTION_CURRENT < 0 and none of them seem to have PV or a wind turbine so we can probably ignore them.
-
-```{r, energyTenure, fig.cap="Comparing distributions of ENERGY_CONSUMPTION_CURRENT by tenure and built form"}
-# repeat with a density plot to allow easy overlap 
-# exclude those with no data
-ggplot2::ggplot(sotonUniqueEPCsDT[TENURE != "NO DATA!" &
-                           TENURE != "unknown" &
-                           TENURE != ""], aes(x = ENERGY_CONSUMPTION_CURRENT, 
-                                              fill = TENURE, alpha = 0.2)) +
-  geom_density() +
-  facet_wrap(~BUILT_FORM) +
-  guides(alpha = FALSE) +
-  theme(legend.position = "bottom")
-```
-
-## Check CO2_EMISSIONS_CURRENT
-
-Next we do the same for current emissions. Repeat the coding for total floor area using 0 and 1 TCO2/y as the threshold of interest.
-
-
-```{r, checkEmissions, fig.cap="Histogram of CO2_EMISSIONS_CURRENT"}
-ggplot2::ggplot(sotonUniqueEPCsDT, aes(x = CO2_EMISSIONS_CURRENT)) +
-  geom_histogram(binwidth = 1)
-
-nZeroEmissions <- nrow(sotonUniqueEPCsDT[CO2_EMISSIONS_CURRENT < 0])
-
-sotonUniqueEPCsDT[, emissionsFlag := ifelse(CO2_EMISSIONS_CURRENT < 0, "-ve CO2/y", NA)]
-sotonUniqueEPCsDT[, emissionsFlag := ifelse(CO2_EMISSIONS_CURRENT == 0, "0 CO2/y", emissionsFlag)]
-sotonUniqueEPCsDT[, emissionsFlag := ifelse(CO2_EMISSIONS_CURRENT > 0 & 
-                                     CO2_EMISSIONS_CURRENT <= 1, "0-1 TCO2/y", emissionsFlag)]
-sotonUniqueEPCsDT[, emissionsFlag := ifelse(CO2_EMISSIONS_CURRENT > 1, "1+ TCO2/y", emissionsFlag)]
-
-t <- sotonUniqueEPCsDT[, .(nObs = .N), keyby = .(emissionsFlag, hasWind, hasPV)]
-
-kableExtra::kable(t, caption = "Properties with CO2_EMISSIONS_CURRENT < 0 by presence of microgeneration")
-
-kableExtra::kable(round(100*(prop.table(table(sotonUniqueEPCsDT$emissionsFlag, 
-                                              sotonUniqueEPCsDT$consFlag, 
-                                              useNA = "always")
-                                        )
-                             )
-                        ,2)
-                  , caption = "% properties in CO2_EMISSIONS_CURRENT categories by ENERGY_CONSUMPTION_CURRENT categories")
-
-```
-
-There are `r nZeroEmissions` properties with 0 or negative emissions. It looks like they are also the properties with -ve kWh as we might expect. So we can safely ignore them.
-
-## Check ENVIRONMENT_IMPACT_CURRENT
-
-`Environmental impact` should decrease as emissions increase.
-
-```{r, checkImpact, fig.cap="Histogram of ENVIRONMENT_IMPACT_CURRENT"}
-ggplot2::ggplot(allEPCs_DT, aes(x = ENVIRONMENT_IMPACT_CURRENT)) +
-  geom_histogram()
-```
-
-So what is the relationship between ENVIRONMENT_IMPACT_CURRENT and CO2_EMISSIONS_CURRENT? It is not linear... (Figure \@ref(fig:checkEmissionsImpact)) and there are some interesting outliers.
-
-```{r, checkEmissionsImpact, fig.cap="PLot of ENVIRONMENT_IMPACT_CURRENT vs CO2_EMISSIONS_CURRENT"}
-
-ggplot2::ggplot(allEPCs_DT, aes(x = CO2_EMISSIONS_CURRENT, 
-                           y = ENVIRONMENT_IMPACT_CURRENT,
-                           colour = TENURE)) +
-  geom_point() +
-  facet_wrap(TENURE~.) +
-  theme(legend.position = "bottom")
-```
-
-## Check TOTAL_FLOOR_AREA
-
-Repeat the coding for total floor area using 5 m2 as the threshold of interest.
-
-```{r, checkFloorArea, fig.cap="Histogram of TOTAL_FLOOR_AREA"}
-ggplot2::ggplot(sotonUniqueEPCsDT, aes(x = TOTAL_FLOOR_AREA)) +
-  geom_histogram(binwidth = 1)
-
-nZeroFloorArea <- nrow(sotonUniqueEPCsDT[TOTAL_FLOOR_AREA < 0])
-
-sotonUniqueEPCsDT[, floorFlag := ifelse(TOTAL_FLOOR_AREA == 0, "0 m2", NA)]
-sotonUniqueEPCsDT[, floorFlag := ifelse(TOTAL_FLOOR_AREA > 0 & 
-                                     TOTAL_FLOOR_AREA <= 10, "0-5 m2", floorFlag)]
-sotonUniqueEPCsDT[, floorFlag := ifelse(TOTAL_FLOOR_AREA > 10, "5+ m2", floorFlag)]
-
-t <- with(sotonUniqueEPCsDT, table(floorFlag, consFlag))
-
-kableExtra::kable(round(100*prop.table(t),2), caption = "% properties with TOTAL_FLOOR_AREA category by ENERGY_CONSUMPTION_CURRENT category")
-
-kableExtra::kable(head(sotonUniqueEPCsDT[, .(BUILDING_REFERENCE_NUMBER, PROPERTY_TYPE, TOTAL_FLOOR_AREA, 
-                                    ENERGY_CONSUMPTION_CURRENT)][order(-TOTAL_FLOOR_AREA)], 10), 
-                  caption = "Top 10 by floor area (largest)")
-
-kableExtra::kable(head(sotonUniqueEPCsDT[, .(BUILDING_REFERENCE_NUMBER, PROPERTY_TYPE, TOTAL_FLOOR_AREA,
-                                    ENERGY_CONSUMPTION_CURRENT)][order(TOTAL_FLOOR_AREA)], 10), 
-                  caption = "Bottom 10 by floor area (smallest)")
-
-kableExtra::kable(round(100*prop.table(t),2), caption = "% properties with TOTAL_FLOOR_AREA category by ENERGY_CONSUMPTION_CURRENT category")
-
-```
-
-\@ref(tab:checkEmissions) shows that the properties with floor area of < 10m2 are not necessarily the ones with 0 or negative kWh values. Nevertheless they represent a small proportion of all properties.
-
-The scale of the x axis also suggests a few very large properties.
-
-## Data summary
-
-We have identified some issues with a small number of the properties in the EPC dataset. These are not unexpected given that much of the estimates rely on partial or presumed data. Data entry errors are also quite likely. As a result we exclude:
-
- * any property where ENERGY_CONSUMPTION_CURRENT <= 0
- * any property where TOTAL_FLOOR_AREA <= 5
- * any property where CO2_EMISSIONS_CURRENT <= 0
-
-```{r, finalData}
-finalDT <- sotonUniqueEPCsDT[ENERGY_CONSUMPTION_CURRENT > 0 &
-                      TOTAL_FLOOR_AREA > 5 &
-                      CO2_EMISSIONS_CURRENT > 0]
-
-skimr::skim(finalDT)
-```
-
-This leaves us with a total of `r prettyNum(nrow(finalDT), big.mark = ",")` properties.
-`
 # Current estimated annual CO2 emmisions
 
-We can now use the cleaned data to estimated the annual CO2 emissions at:
-
- * MSOA level for Southampton using
+In this #fridayFagPacket we're going to use these datasets to estimate the annual CO2 emissions at MSOA level for Southampton using
    * BEIS observed data
    * aggregated EPC data
- * Dwelling level for Southampton using
-   * aggregated EPC data
- 
-Obviously the EPC-derived totals will not be the total CO2 emissions for **all** Southampton properties since we know not all dwellings are represented in the EPC data (see above).
 
-## MSOA estimates
+Obviously the EPC-derived totals will not be the total CO2 emissions for **all** Southampton properties since we know not all dwellings are represented in the EPC data (see above and [in more detail](epcChecks.html#31_Check_‘missing’_EPC_rates)).
 
-Method:
+Note that we can also use the EPC estimated CO2 emissions data to look at dwelling level patterns if a Carbon Tax was applied. We leave that for a future #fridayFagPacket.
+
+## Method
+
+To calculate the MSOA level estimates from the BEIS data we need to apply conversion factors that convert the kWh numbers we have to CO2 emissions. We use the following:
 
 ```{r, setCarbonFactors, echo = TRUE}
 elecCF <- 200 # CO2e/kWh https://www.icax.co.uk/Grid_Carbon_Factors.html
 gasCF <- 215 # https://www.icax.co.uk/Carbon_Emissions_Calculator.html
 ```
 
-BEIS: apply 2019 mean grid carbon intensity for:
+pply 2019 mean grid carbon intensity for:
   * electricity: `r elecCF` g 
   * gas: `r gasCF` g CO2e/kWh 
-EPC: use estimated CO2 values - note based on 'old' electricity grid carbon intensity values ()
+
+For the EPC use just use the estimated CO2 values - although we should note that these are based on 'old' electricity grid carbon intensity values (ref) and since the EPC data does not provide gas and electricity kWh data seperately we cannot correct it.
 
 ```{r, co2BEIS}
 sotonMSOA_DT[, sumBEIS_tCO2 := (beisElecMWh/1000)*elecCF + (beisGasMWh/1000)*gasCF]
