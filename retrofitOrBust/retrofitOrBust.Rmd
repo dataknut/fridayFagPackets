@@ -33,6 +33,13 @@ bibliography: '`r path.expand("~/github/dataknut/refs/refs.bib")`'
 >This fridayFagPacket was first published as a [blog](https://dataknut.wordpress.com/2020/10/16/retrofit-or-bust/)
 
 <hr>
+
+# fridayFagPackets
+
+Numbers that could have been done on the back of one and should probably come with a similar health warning...
+
+>Find out [more](https://dataknut.github.io/fridayFagPackets/).
+
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
