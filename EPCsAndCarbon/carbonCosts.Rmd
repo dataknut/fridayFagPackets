@@ -38,6 +38,12 @@ library(kableExtra)
 library(readxl)
 ```
 
+# fridayFagPackets
+
+Numbers that could have been done on the back of one and should probably come with a similar health warning...
+
+>Find out [more](https://dataknut.github.io/fridayFagPackets/).
+
 # Preamble
 
 There's a lot of talk about Carbon Taxes right now and some early signs that the UK Government will apply them to (larger) businesses post-Brexit (i.e. post-ETS). There is currently not much noise on the idea of applying them to households but it is always a possibility given the acceptance of using tax-based incentives to attempt to suppress the consumption of bad stuff. Think tobacco, alcohol and sugar.
