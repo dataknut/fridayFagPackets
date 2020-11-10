@@ -96,7 +96,7 @@ t <- allEPCs_DT[, .(nRecords = .N,
 
 kableExtra::kable(head(t[nRecords > 1]), cap = "Examples of multiple records")
 ```
-\@ref(fig:plotAllRecords) shows the inspection date of all EPC records. We want to just select the most recent as we are not currently interested in change over time.
+Figure \@ref(fig:plotAllRecords) shows the inspection date of all EPC records. We want to just select the most recent as we are not currently interested in change over time.
 
 ```{r, checkData}
 # select just these vars
@@ -122,7 +122,7 @@ summary(t$diff)
 uniqueN(sotonUniqueEPCsDT$BUILDING_REFERENCE_NUMBER)
 ```
 
-This leaves us with `r prettyNum(uniqueN(sotonUniqueEPCsDT$BUILDING_REFERENCE_NUMBER), big.mark = ",")` cases and \@ref(fig:plotLatestRecords) shows the inspection date of the most recent records once we have selected them.
+This leaves us with `r prettyNum(uniqueN(sotonUniqueEPCsDT$BUILDING_REFERENCE_NUMBER), big.mark = ",")` cases and Figure \@ref(fig:plotLatestRecords) shows the inspection date of the most recent records once we have selected them.
 
 ```{r, plotLatestRecords, fig.cap="Latest records: Inspection date"}
 ggplot2::ggplot(sotonUniqueEPCsDT, aes(x = INSPECTION_DATE)) +
@@ -242,7 +242,7 @@ ggplot2::ggplot(allEPCs_DT, aes(x = ENVIRONMENT_IMPACT_CURRENT)) +
 
 So what is the relationship between ENVIRONMENT_IMPACT_CURRENT and CO2_EMISSIONS_CURRENT? It is not linear... (Figure \@ref(fig:checkEmissionsImpact)) and there are some interesting outliers.
 
-```{r, checkEmissionsImpact, fig.cap="PLot of ENVIRONMENT_IMPACT_CURRENT vs CO2_EMISSIONS_CURRENT"}
+```{r, checkEmissionsImpact, fig.cap="Plot of ENVIRONMENT_IMPACT_CURRENT vs CO2_EMISSIONS_CURRENT"}
 
 ggplot2::ggplot(allEPCs_DT, aes(x = CO2_EMISSIONS_CURRENT, 
                            y = ENVIRONMENT_IMPACT_CURRENT,
@@ -283,7 +283,7 @@ kableExtra::kable(round(100*prop.table(t),2), caption = "% properties with TOTAL
 
 ```
 
-\@ref(tab:checkEmissions) shows that the properties with floor area of < 10m2 are not necessarily the ones with 0 or negative kWh values. Nevertheless they represent a small proportion of all properties.
+Table \@ref(tab:checkEmissions) shows that the properties with floor area of < 10m2 are not necessarily the ones with 0 or negative kWh values. Nevertheless they represent a small proportion of all properties.
 
 The scale of the x axis also suggests a few very large properties.
 
@@ -504,17 +504,13 @@ sotonMSOA_DT <- msoaNamesDT[sotonMSOA_DT]
 ```{r, compareEpcEstimates}
 t <- sotonMSOA_DT[, .(nHouseholds_2011 = sum(nHHs_tenure),
                       nElecMeters_2018 = sum(nElecMeters),
-                      nEPCs_2020 = sum(nEPCs),
-                      sumEPCMWh = sum(sumEpcMWh),
-                  sumBEISMWh = sum(beisEnergyMWh),
-                  sumEPC_tCO2 = sum(sumEPC_tCO2)
-                  )]
+                      nEPCs_2020 = sum(nEPCs)), keyby = .(LAName)]
 
-kableExtra::kable(t, caption = "Comparison of different estimates of the number of dwellings and energy demand") %>%
+kableExtra::kable(t, caption = "Comparison of different estimates of the number of dwellings") %>%
   kable_styling()
 
 nHouseholds_2011f <- sum(sotonMSOA_DT$nHHs_tenure)
-nElecMeters_2018f <- sum(sotonMSOA_DT$elecMeters)
+nElecMeters_2018f <- sum(sotonMSOA_DT$nElecMeters)
 nEPCs_2020f <- sum(sotonMSOA_DT$nEPCs)
 
 makePC <- function(x,y,r){
@@ -525,7 +521,7 @@ makePC <- function(x,y,r){
 
 ```
 
-We can see that the number of EPCs we have is:
+From this we calculate that number of EPCs we have is:
 
   * `r makePC(nEPCs_2020f,nHouseholds_2011f,1)`% of Census 2011 households
   * `r makePC(nEPCs_2020f,nElecMeters_2018f,1)`% of the recorded 2018 electricity meters
@@ -546,8 +542,7 @@ t[, pc_missingHH := makePC(nEPCs,nHHs_tenure,1)]
 t[, pc_missingMeters := makePC(nEPCs,nElecMeters,1)]
 t[, pc_energyBEIS := makePC(sumEpcMWh,beisEnergyMWh,1)]
 
-kableExtra::kable(t[order(-pc_missingHH)], digits = 2, caption = "EPC records as a % of n census households and n meters per MSOA") %>%
-  kable_styling()
+kt1 <- t
 
 ggplot2::ggplot(t, aes(x = pc_missingHH, 
                        y = pc_missingMeters,
@@ -562,7 +557,7 @@ ggplot2::ggplot(t, aes(x = pc_missingHH,
 
 outlierMSOA <- t[pc_missingHH > 100]
 ```
-Figure \@ref(tab:missingEPCbyMSOA) suggests that rates vary considerably by MSOA but are relatively consistent across the two baseline 'truth' estimates with the exception of `r outlierMSOA$MSOACode` which appears to have many more EPCs than Census 2011 households. It is worth noting that [this MSOA](https://www.localhealth.org.uk/#c=report&chapter=c01&report=r01&selgeo1=msoa_2011.E02003577&selgeo2=eng.E92000001) covers the city centre and dock areas which have had substantial new build since 2011 and so may have households inhabiting dwellings that did not exist at Census 2011. This is also supported by the considerably higher EPC derived energy demand data compared to BEIS's 2018 data - although it suggests the dwellings are either very new (since 2018) or are yet to be occupied.
+Figure \@ref(fig:missingEPCbyMSOA) (see Table \@ref(tab:bigMSOATable) below for details) suggests that rates vary considerably by MSOA but are relatively consistent across the two baseline 'truth' estimates with the exception of `r outlierMSOA$MSOACode` which appears to have many more EPCs than Census 2011 households. It is worth noting that [this MSOA](https://www.localhealth.org.uk/#c=report&chapter=c01&report=r01&selgeo1=msoa_2011.E02003577&selgeo2=eng.E92000001) covers the city centre and dock areas which have had substantial new build since 2011 and so may have households inhabiting dwellings that did not exist at Census 2011. This is also supported by the considerably higher EPC derived energy demand data compared to BEIS's 2018 data - although it suggests the dwellings are either very new (since 2018) or are yet to be occupied.
 
 As we would expect those MSOAs with the lowest EPC coverage on both baseline measures tend to have higher proportions of owner occupiers. 
 
@@ -588,7 +583,26 @@ ggplot2::ggplot(t, aes(x = sumEpcMWh,
 outlier <- t[sumEpcMWh > 70000]
 ```
 
-\@ref(fig:energyMSOAPlot) shows that both of these are true. MSOAs with a high proportion of owner occupiers (and therefore more likely to have missing EPCs) tend to have higher observed energy demand than the EOC data suggests - they are above the reference line. MSOAs with a lower proportion of owner occupiers (and therefore more likely to have more complete EPC coverage) tend to be on or below the line. As before we have the same notable outlier (`r outlier$MSOACode`) and for the same reasons... In this case this produces a much higher energy demand estimate than the BEIS 2018 data records.
+Figure \@ref(fig:energyMSOAPlot) shows that both of these are true. MSOAs with a high proportion of owner occupiers (and therefore more likely to have missing EPCs) tend to have higher observed energy demand than the EOC data suggests - they are above the reference line. MSOAs with a lower proportion of owner occupiers (and therefore more likely to have more complete EPC coverage) tend to be on or below the line. As before we have the same notable outlier (`r outlier$MSOACode`) and for the same reasons... In this case this produces a much higher energy demand estimate than the BEIS 2018 data records.
+
+# Check BEIS data
+
+While we're here we'll also check the BEIS data. Table \@ref(tab:beisDesc) shows the five highest and lowest MSOAs by annual electricity use.
+
+```{r, beisDesc}
+t1 <- head(sotonMSOA_DT[, .(MSOA11NM, MSOA11CD, beisElecMWh, nElecMeters,
+                            beisGasMWh, nGasMeters)][order(-beisElecMWh)],5)
+
+kableExtra::kable(t1, caption = "Southampton MSOAs: BEIS 2018 energy data ordered by highest electricity (top 5)") %>%
+  kable_styling()
+
+t2 <- tail(sotonMSOA_DT[, .(MSOA11NM, MSOA11CD, beisElecMWh, nElecMeters,
+                            beisGasMWh, nGasMeters)][order(-beisElecMWh)],5)
+
+kableExtra::kable(t2, caption = "Southampton MSOAs: BEIS 2018 energy data ordered by lowest electricity (bottom 5)") %>%
+  kable_styling()
+```
+
 
 # Save MSOA aggregates for re-use
 
@@ -610,5 +624,14 @@ message("Saved ", nrow(sotonMSOA_DT), " rows of data.")
  * ggplot2 [@ggplot2]
  * kableExtra [@kableExtra]
  * readxl [@readxl]
- 
+
+# Annex
+
+## Tables
+
+```{r, bigMSOATable}
+kableExtra::kable(kt1[order(-pc_missingHH)], digits = 2, caption = "EPC records as a % of n census households and n meters per MSOA") %>%
+  kable_styling()
+```
+
 # References
