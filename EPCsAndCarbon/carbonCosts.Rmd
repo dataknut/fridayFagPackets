@@ -171,8 +171,10 @@ In all cases we assume:
 Applying these rates enables us to calculate the Southampton and MSOA level Carbon Tax liability of households via the EPC and BEIS observed energy consumption methods.
 
 ```{r, msoaScenario1}
-msoaDT[, ct_BEIS := sumBEIS_tCO2 * 16]
-msoaDT[, ct_EPCs := sumEPC_tCO2 * 16]
+carbonTaxRate <- 16
+
+msoaDT[, ct_BEIS := sumBEIS_tCO2 * carbonTaxRate]
+msoaDT[, ct_EPCs := sumEPC_tCO2 * carbonTaxRate]
 
 t <- msoaDT[, .(CarbonTaxBEIS_GBP = prettyNum(sum(ct_BEIS), big.mark = ","),
                       CarbonTaxEPCs_GBP = prettyNum(sum(ct_EPCs), big.mark = ",")),
@@ -184,13 +186,13 @@ kableExtra::kable(t, caption = "Estimated baseline Carbon Tax liability for Sout
 ct_perHH <- sum(msoaDT$ct_BEIS)/sum(msoaDT$nHHs_tenure)
 ```
 
-As we would expect the values are relatively close due to the similar total emissions values estimated above. Using the BEIS estimate this works out to a mean of £`r round(ct_perHH,2)` per household per year. Not a lot. Would you try to de-carbonise your energy supply to try to reduce a Carbon Tax liability of that scale?
+As we would expect the values are relatively close due to the similar total emissions values estimated above. Using the BEIS estimate this works out to a mean of ~ £`r round(ct_perHH,2)` per household per year. Not a lot. Would you try to de-carbonise your energy supply to try to reduce a Carbon Tax liability of that scale?
 
 ```{r, councilTax}
-ct_perHH <- 102000000/sum(msoaDT$nHHs_tenure)
+councilTax_perHH <- 102000000/sum(msoaDT$nHHs_tenure)
 ```
 
-For context, Southampton City Council project a `Council Tax Requirement` of £102m in Council Tax in [2020-2021](https://www.southampton.gov.uk/council-tax/information/how-much-we-spend.aspx). That's a mean of ~ £ `r round(ct_perHH)` per household per year...
+For context, Southampton City Council project a `Council Tax Requirement` of £102m in Council Tax in [2020-2021](https://www.southampton.gov.uk/council-tax/information/how-much-we-spend.aspx). That's a mean of ~ £ `r round(councilTax_perHH)` per household per year...
 
 However, as we would expect given Figure \@ref(fig:co2MSOAPlot), if we look at the values by MSOA (Figure \@ref(fig:carbonTaxMSOAPlot)), we find that values differ quite substantially between the methods depending on the levels of EPC records (or missing households - see above) that we are likely to have.
 
@@ -303,15 +305,82 @@ outlier$MSOACode
 
 However if we analyse the total change by MSOA (\@ref(fig:carbonTaxMSOAPlotDepChange)) we see that one area (`r outlier$MSOACode`) shows a marked reduction. We have seen this area before - it has the [highest electricity demand](epcChecks.html#5_Check_BEIS_data) so no surprises there.
 
+## But are we missing the point?
+
+While the mean carbon tax might be £ `r round(mean(epcDT$carbonTax),2)` per household per year under our baseline assumptions that is, after all, just the mean. Some households would pay a lot more and some a lot less. For the ones who pay a lot more there might just be an incentive to decarbonise. So what is the actual shape of the distribution?
+
+Notwithstanding the caveats, we can get a sense of this from the EPC data if we use the modelled CO2 emissions per dwelling and multiply by our Carbon Tax rate (£`r carbonTaxRate` per tonne/year).
+
+```{r, epcCarbonBox, fig.cap= "Boxplot of dwelling level Carbon Tax by area deprivation level (% of households with 3 dimensions of deprivation)"}
+epcDT <- data.table::fread(path.expand("~/data/EW_epc/domestic-E06000045-Southampton/EPCs_liveFinalClean.csv.gz"))
+
+epcDT[, carbonTax := carbonTaxRate * CO2_EMISSIONS_CURRENT]
+
+# check
+message("The sum should match the EPC aggregate above")
+prettyNum(sum(epcDT$carbonTax), big.mark = ",")
+
+epcDT[, dep3_cuts := cut(dep3_pc, 5)]
+
+plotDT <- epcDT[epcIsUnknownTenure != 1 & TENURE != "unknown" &
+                  carbonTax < 1000 &
+                  !is.na(dep3_cuts)]
+
+myCaption <- paste0("Exclusions: \n",
+                    "EPCs with uknown tenure \n",
+                    nrow(epcDT[carbonTax > 1000]), " EPCs where Carbon Tax > £1000")
+
+ggplot2::ggplot(plotDT, aes(x = carbonTax, y = TENURE, colour = dep3_cuts)) +
+  geom_boxplot() +
+  scale_color_discrete(name = "Deprivation") +
+  theme(legend.position = "bottom") +
+  guides(colour=guide_legend(nrow=2)) +
+  labs(x = "Carbon Tax (£/year)",
+       y = "Tenure",
+       caption = myCaption)
+
+t <- table(epcDT$TENURE, epcDT$dep3_cuts, useNA = "always")
+kableExtra::kable(addmargins(t), caption = "Frequency counts of EPCs by Tenure and MSOA deprivation") %>%
+  kable_styling()
+```
+
+Figure \@ref(fig:epcCarbonBox) suggest that in general owner-occupied dwellings will be liable for a higher Carbon Tax charge (compare across Tenure). In addition owner-occupied dwellings in areas with lower deprivation would generally pay slightly more.
+
+This is shown more clearly in Figure \@ref(fig:medianPlot) which shows the 25%, median (50%) and 75% Carbon Tax levels by deprivation and tenure. Nevertheless we can see that 75% of owner-occupier households in low deprivation areas would still be paying less than £80 a year in Carbon Tax. It seems clear therefore that to incentivise large-scale decarbonisation the Carbon Tax rate would need to be considerably higher than £`r carbonTaxRate`per tCO2/year.
+
+```{r, medianPlot, fig.cap="Median Carbon Tax by tenure and deprivation level"}
+aggDT <- plotDT[, .(median = median(carbonTax),
+                    p25 = quantile(carbonTax)[[2]],
+                    p75 = quantile(carbonTax)[[4]]), keyby = .(TENURE, dep3_cuts)]
+
+myCaption <- paste0(myCaption, "\nBars show 25% and 75% quantiles"
+                    )
+
+dodge <- position_dodge(width=0.9) # https://ggplot2.tidyverse.org/reference/geom_linerange.html
+ggplot2::ggplot(aggDT, aes(x = dep3_cuts, y = median, colour = TENURE, group = TENURE)) +
+  geom_point(position = dodge) +
+  geom_errorbar(aes(ymin = p25, ymax = p75), position = dodge, width = 0.45)+
+  scale_color_discrete(name = "Tenure") +
+  labs(x = "Deprivation",
+       y = "Carbon Tax (£/year)",
+       caption = myCaption)
+
+```
+
+
 # So what?
 
 Several things are clear from these #backOfaFagPacket estimates:
 
- * we need much better data
  * if the data we have is in any way remotely robust then:
-   * a domestic Carbon Tax of £16/TCO2 is not going to produce a large incentive to de-carbonise
-   * given that larger and wealthier households use more energy, a fixed rate Carbon Tax might be progressive - but we need dwelling level analysis to confirm this
-   * but wealthier households would potentially have the capital to de-carbonise quicker
+   * a domestic Carbon Tax of £16/TCO2 implies a mean per household Carbon Tax for Southampton of ~ £`r round(ct_perHH,2)` to ~ £`r round(mean(epcDT$carbonTax),2)` per year depending on calculation method;
+   * in general owner-occupiers and those in low deprivation areas would pay more
+   * some dwellings will incur a much higher Carbon Tax charge - but nevertheless 75% of owner-occupier households in low deprivation areas would still be paying less than £80 a year in Carbon Tax under our baseline assumptions;
+   * we might need a much higher Carbon Tax rate to incetivise de-carbonisation;
+   * the EPC-derived estimates show a much weaker relationship with deprivation at both area (MSOA) and dwelling level - indicating that they suppress the carbon emissions consequences of non-heat and hot water related (and non-modelled) energy use. This is not surprising - they were not intended to take account of occupant energy using practices but as a way to compare different dwellings;
+ * we need [smart meter data at the dwelling level](https://serl.ac.uk/) to take this analysis much further!
+   
+Given that larger and wealthier households use more energy, a fixed rate Carbon Tax might be progressive but wealthier households would potentially have the capital to de-carbonise quicker. In addition social and private renters are not in a position to improve the fabric of their dwelling and so it seems unfair to penalise them for living in low energy efficiency dwellings. In this situation we might need to distinguish between unavoidable emissions (due to the built form) and avoidable ones due to occupant practices). This might open up a right [can of worms](https://idioms.thefreedictionary.com/can+of+worms)...
 
 # R packages used
 
