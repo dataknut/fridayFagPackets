@@ -18,7 +18,7 @@ authors = "Ben Anderson"
 dp <- "~/Dropbox/data/"
 postcodes_dt <- data.table::fread(paste0(dp, "UK_postcodes/PCD_OA_LSOA_MSOA_LAD_AUG20_UK_LU.csv.gz"))
 postcodes_dt[, pcd_sector := tstrsplit(pcds, " ", keep = c(1))]
-lsoa_DT <- postcodes_dt[, .(nPostcodes = .N), keyby = .(pcd_sector, lsoa11cd, ladnm, ladnmw)]
+lsoa_DT <- postcodes_dt[, .(nPostcodes = .N), keyby = .(lsoa11cd, pcd_sector, ladnm, ladnmw)]
 
 # re-run report here
 makeReport(rmdFile)
