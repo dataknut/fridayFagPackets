@@ -30,7 +30,7 @@ bibliography: '`r path.expand("~/bibliography.bib")`'
 
 <hr>
 
->This fridayFagPacket was first published as a [blog](https://dataknut.wordpress.com/2020/10/16/retrofit-or-bust/)
+>This fridayFagPacket was first published at...
 
 <hr>
 
@@ -44,28 +44,29 @@ Numbers that could have been done on the back of one and should probably come wi
 knitr::opts_chunk$set(echo = TRUE)
 library(data.table)
 library(ggplot2)
+
 ```
 
 # It's the cats, stupid
-Inspired by @giulio_mattioli's [recent paper on the car dependence of dog ownership](https://twitter.com/giulio_mattioli/status/1466361022747455492) we thought we'd take a look at [cats](https://twitter.com/giulio_mattioli/status/1466710752606179331) and residential energy demand. Why? Well people like to keep their cats warm but, more importantly, they also cut big holes in doors and/or windows to let the cats in and out. Hardly a thermally sealed envelope!
+Inspired by `@giulio_mattioli`'s [recent paper on the car dependence of dog ownership](https://twitter.com/giulio_mattioli/status/1466361022747455492) we thought we'd take a look at [cats](https://twitter.com/giulio_mattioli/status/1466710752606179331) and residential energy demand. Why? Well people like to keep their cats warm but, more importantly, they also cut big holes in doors and/or windows to let the cats in and out. Hardly a thermally sealed envelope!
 
 # What's the data?
 
 For now we're using:
 
- * postcode sector level estimates of cat ownership in the UK. Does such a thing exist? [YEAH](https://data.gov.uk/dataset/febd29ff-7e7d-4f82-9908-031f7f0e0860/cat-population-per-postcode-district)! "_This dataset gives the mean estimate for population for each district, and was generated as part of the delivery of commissioned research. The data contained within this dataset are modelled figures, based on national estimates for pet population, and available information on Veterinary activity across GB. The data are accurate as of 01/01/2015. The data provided are summarised to the postcode district level. Further information on this research is available in a research publication by James Aegerter, David Fouracre & Graham C. Smith, discussing the structure and density of pet cat and dog populations across Great Britain._"
- * LSOA level data on [gas](https://www.gov.uk/government/collections/sub-national-gas-consumption-data) and [electricity](https://www.gov.uk/government/collections/sub-national-electricity-consumption-data) 'consumption' at LSOA/SOA level aggregated to postcode sectors
+ * postcode sector level estimates of cat ownership in the UK in 2015. Does such a thing exist? [YEAH](https://data.gov.uk/dataset/febd29ff-7e7d-4f82-9908-031f7f0e0860/cat-population-per-postcode-district)! "_This dataset gives the mean estimate for population for each district, and was generated as part of the delivery of commissioned research. The data contained within this dataset are modelled figures, based on national estimates for pet population, and available information on Veterinary activity across GB. The data are accurate as of 01/01/2015. The data provided are summarised to the postcode district level. Further information on this research is available in a research publication by James Aegerter, David Fouracre & Graham C. Smith, discussing the structure and density of pet cat and dog populations across Great Britain._"
+ * LSOA level data on [gas](https://www.gov.uk/government/collections/sub-national-gas-consumption-data) and [electricity](https://www.gov.uk/government/collections/sub-national-electricity-consumption-data) 'consumption' at LSOA/SOA level for 2015 aggregated to postcode sectors
  * [Indices of Deprivation 2019](https://www.gov.uk/government/statistics/english-indices-of-deprivation-2019) for England
 
 ```{r loadData}
 
-gas_dt <- data.table::fread("~/Dropbox/data/beis/subnationalGas/lsoaDom/LSOA_GAS_2019.csv.gz")
+gas_dt <- data.table::fread(paste0(dp, "/beis/subnationalGas/lsoaDom/LSOA_GAS_2015.csv.gz"))
 gas_dt[, lsoa11cd := `Lower Layer Super Output Area (LSOA) Code`]
 gas_dt[, mean_gas_kWh := `Mean consumption (kWh per meter)`]
 gas_dt[, total_gas_kWh := `Consumption (kWh)`]
 gas_dt[, nGasMeters := `Number of consuming meters`]
 
-elec_dt <- data.table::fread("~/Dropbox/data/beis/subnationalElec/lsoaDom/LSOA_ELEC_2019.csv.gz")
+elec_dt <- data.table::fread(paste0(dp, "/beis/subnationalElec/lsoaDom/LSOA_ELEC_2015.csv.gz"))
 elec_dt[, lsoa11cd := `Lower Layer Super Output Area (LSOA) Code`]
 elec_dt[, mean_elec_kWh := `Mean domestic electricity consumption 
 (kWh per meter)`]
@@ -92,10 +93,10 @@ postcode_sector_energy <- merged_lsoa_DT[, .(nLSOAs = .N,
                                              total_elec_kWh = sum(total_elec_kWh, na.rm = TRUE),
                                              nGasMeters = sum(nGasMeters, na.rm = TRUE),
                                              nElecMeters = sum(nElecMeters, na.rm = TRUE)), keyby = .(pcd_sector, ladnm, ladnmw)]
-head(postcode_sector_energy)
+#head(postcode_sector_energy)
 
 # cats
-cats_DT <- data.table::fread("~/Dropbox/data/UK_Animal and Plant Health Agency/APHA0372-Cat_Density_Postcode_District.csv")
+cats_DT <- data.table::fread(paste0(dp, "UK_Animal and Plant Health Agency/APHA0372-Cat_Density_Postcode_District.csv"))
 cats_DT[, pcd_sector := PostcodeDistrict]
 
 setkey(cats_DT, pcd_sector)
@@ -105,13 +106,13 @@ pc_district <- cats_DT[postcode_sector_energy]
 
 ```
 
-We could also use @SERL_UK's [smart meter gas/elec data](https://twitter.com/dataknut/status/1466712963222540289?s=20), dwelling characteristics and pet ownership (but no species detail :-) 
+We could also use `@SERL_UK`'s [smart meter gas/elec data](https://twitter.com/dataknut/status/1466712963222540289?s=20), dwelling characteristics and pet ownership (but no species detail :-) 
 
 # What do we find?
 
 Well, in some places there seem to be a lot of estimated cats...
 
-(We calculated mean cast per househodl by dividing by the number of electricity meters - probably a reasonable proxy)
+(We calculated mean cats per household by dividing by the number of electricity meters - probably a reasonable proxy)
 
 ```{r maxCats}
 pc_district[, mean_Cats := EstimatedCatPopulation/nElecMeters]
