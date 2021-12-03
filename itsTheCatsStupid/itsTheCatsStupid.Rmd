@@ -25,7 +25,7 @@ output:
     toc: yes
     toc_depth: 2
     fig_width: 5
-bibliography: '`r path.expand("~/github/dataknut/refs/refs.bib")`'
+bibliography: '`r path.expand("~/bibliography.bib")`'
 ---
 
 <hr>
@@ -53,13 +53,11 @@ Inspired by @giulio_mattioli's [recent paper on the car dependence of dog owners
 
 For now we're using:
 
- * postcode sector level estimates of cat ownership in the UK. Does such a thing exist? [YEAH](https://t.co/ZEwaB5YEHI)!
- * LSOA level data on gas and electricity 'consumption' at LSOA/SOA level aggregated to postcode sectors
+ * postcode sector level estimates of cat ownership in the UK. Does such a thing exist? [YEAH](https://data.gov.uk/dataset/febd29ff-7e7d-4f82-9908-031f7f0e0860/cat-population-per-postcode-district)! "_This dataset gives the mean estimate for population for each district, and was generated as part of the delivery of commissioned research. The data contained within this dataset are modelled figures, based on national estimates for pet population, and available information on Veterinary activity across GB. The data are accurate as of 01/01/2015. The data provided are summarised to the postcode district level. Further information on this research is available in a research publication by James Aegerter, David Fouracre & Graham C. Smith, discussing the structure and density of pet cat and dog populations across Great Britain._"
+ * LSOA level data on [gas](https://www.gov.uk/government/collections/sub-national-gas-consumption-data) and [electricity](https://www.gov.uk/government/collections/sub-national-electricity-consumption-data) 'consumption' at LSOA/SOA level aggregated to postcode sectors
+ * [Indices of Deprivation 2019](https://www.gov.uk/government/statistics/english-indices-of-deprivation-2019) for England
 
 ```{r loadData}
-postcodes_dt <- data.table::fread("~/Dropbox/data/UK_postcodes/PCD_OA_LSOA_MSOA_LAD_AUG20_UK_LU.csv.gz")
-postcodes_dt[, pcd_sector := tstrsplit(pcds, " ", keep = c(1))]
-lsoa_DT <- postcodes_dt[, .(nPostcodes = .N), keyby = .(pcd_sector, lsoa11cd, ladnm, ladnmw)]
 
 gas_dt <- data.table::fread("~/Dropbox/data/beis/subnationalGas/lsoaDom/LSOA_GAS_2019.csv.gz")
 gas_dt[, lsoa11cd := `Lower Layer Super Output Area (LSOA) Code`]
@@ -113,38 +111,78 @@ We could also use @SERL_UK's [smart meter gas/elec data](https://twitter.com/dat
 
 Well, in some places there seem to be a lot of estimated cats...
 
+(We calculated mean cast per househodl by dividing by the number of electricity meters - probably a reasonable proxy)
+
 ```{r maxCats}
 pc_district[, mean_Cats := EstimatedCatPopulation/nElecMeters]
 head(pc_district[, .(PostcodeDistrict, EstimatedCatPopulation, mean_Cats, nPostcodes, nElecMeters)][order(-mean_Cats)])
 ```
 LL23 is on the south east corner of the [Snowdonia National Park...](https://www.google.co.uk/maps/place/Bala+LL23/@52.8953768,-3.775299,11z/data=!3m1!4b1!4m5!3m4!1s0x4865404ae1208f67:0x65a437b997c0dfb2!8m2!3d52.8825403!4d-3.6497989) while EH25 is on the outskirts of [Edinburgh](https://www.google.co.uk/maps/place/EH25/@55.8518992,-3.2076308,13z/data=!4m5!3m4!1s0x4887bf6548dd78d7:0xd6f980c5a3b93592!8m2!3d55.8560564!4d-3.1733124).
 
+## More dwellings, more cats?
+
 Is there a correlation between estimated total cats and the number of dwellings (electricity meters)?
 
-```{r testTotalGas}
+```{r testTotalElecMeters}
 ggplot2::ggplot(pc_district, aes(x = nElecMeters , y = EstimatedCatPopulation)) +
   geom_point() +
   geom_smooth()
 ```
 
-Is there a correlation between estimated cat ownership and energy use?
+Is there a correlation between estimated cat ownership and total gas use?
 
 ```{r testTotalGas}
 ggplot2::ggplot(pc_district, aes(x = EstimatedCatPopulation, y = total_gas_kWh)) +
   geom_point()
 ```
 
-```{r testMeanGas}
+Or mean gas use and mean cats?
 
+```{r testMeanGas}
 ggplot2::ggplot(pc_district, aes(x = mean_Cats, y = mean_gas_kWh)) +
   geom_point()
 ```
+
+Or total electricity use and cats?
+
 ```{r testTotalElec}
 ggplot2::ggplot(pc_district, aes(x = EstimatedCatPopulation, y = total_elec_kWh)) +
   geom_point()
 ```
+
+Or mean elec use and mean cats?
+
 ```{r testMeanElec}
 ggplot2::ggplot(pc_district, aes(x = mean_Cats, y = mean_elec_kWh)) +
+  geom_point()
+```
+
+Or total energy use and total cats?
+
+```{r testTotalEnergy}
+pc_district[, total_energy_kWh := total_gas_kWh + total_elec_kWh]
+
+ggplot2::ggplot(pc_district, aes(x = EstimatedCatPopulation, y = total_energy_kWh)) +
+  geom_point()
+```
+
+Well, there may be something in there? Let's try a boxplot by cat deciles... Figure \@ref(fig:catDeciles)
+
+```{r catDeciles, fig.cap = "Cat ownership deciles and total annual residenital electricity & gas use"}
+pc_district[, cat_decile := dplyr::ntile(EstimatedCatPopulation, 10)]
+#head(pc_district[is.na(cat_decile)])
+ggplot2::ggplot(pc_district[!is.na(cat_decile)], aes(x = as.factor(cat_decile), y = total_energy_kWh/1000000)) +
+  geom_boxplot() +
+  labs(x = "Cat ownership deciles",
+       y = "Total domestic electricity & gas GWh")
+```
+Well...
+
+```{r testMeanEnergy}
+pc_district[, total_energy_kWh := total_gas_kWh + total_elec_kWh]
+pc_district[, mean_energy_kWh := total_energy_kWh/nElecMeters]
+
+ggplot2::ggplot(pc_district, aes(x = mean_Cats, y = mean_energy_kWh)) +
   geom_point()
 ```
 
