@@ -8,17 +8,21 @@ makeReport <- function(f){
   )
 }
 
-# >> run report ----
+# Run report ----
+
+#> set data path ----
+dp <- "~/Dropbox/data/"
+
+#> define yaml ----
 rmdFile <- "itsTheCatsStupid" # not the full path
 title = "#backOfaFagPacket: Its the Cats, stupid"
 subtitle = "Does cat ownership correlate with home energy demand?"
 authors = "Ben Anderson"
 
-# load the postcode data here (slow)
-dp <- "~/Dropbox/data/"
+#> load the postcode data here (slow)
 postcodes_dt <- data.table::fread(paste0(dp, "UK_postcodes/PCD_OA_LSOA_MSOA_LAD_AUG20_UK_LU.csv.gz"))
 postcodes_dt[, pcd_sector := tstrsplit(pcds, " ", keep = c(1))]
 lsoa_DT <- postcodes_dt[, .(nPostcodes = .N), keyby = .(lsoa11cd, pcd_sector, ladnm, ladnmw)]
 
-# re-run report here
+#> re-run report here
 makeReport(rmdFile)
