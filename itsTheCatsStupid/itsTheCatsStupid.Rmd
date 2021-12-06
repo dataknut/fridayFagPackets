@@ -42,7 +42,6 @@ Numbers that could have been done on the back of one and should probably come wi
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
-library(data.table)
 library(ggplot2)
 
 ```
@@ -58,52 +57,28 @@ For now we're using:
  * LSOA level data on [gas](https://www.gov.uk/government/collections/sub-national-gas-consumption-data) and [electricity](https://www.gov.uk/government/collections/sub-national-electricity-consumption-data) 'consumption' at LSOA/SOA level for 2015 aggregated to postcode sectors
  * [Indices of Deprivation 2019](https://www.gov.uk/government/statistics/english-indices-of-deprivation-2019) for England
 
-```{r loadData}
-
-gas_dt <- data.table::fread(paste0(dp, "/beis/subnationalGas/lsoaDom/LSOA_GAS_2015.csv.gz"))
-gas_dt[, lsoa11cd := `Lower Layer Super Output Area (LSOA) Code`]
-gas_dt[, mean_gas_kWh := `Mean consumption (kWh per meter)`]
-gas_dt[, total_gas_kWh := `Consumption (kWh)`]
-gas_dt[, nGasMeters := `Number of consuming meters`]
-
-elec_dt <- data.table::fread(paste0(dp, "/beis/subnationalElec/lsoaDom/LSOA_ELEC_2015.csv.gz"))
-elec_dt[, lsoa11cd := `Lower Layer Super Output Area (LSOA) Code`]
-elec_dt[, mean_elec_kWh := `Mean domestic electricity consumption 
-(kWh per meter)`]
-elec_dt[, total_elec_kWh := `Total domestic electricity consumption (kWh)`]
-elec_dt[, nElecMeters := `Total number of domestic electricity meters`]
-
-setkey(gas_dt, lsoa11cd)
-setkey(elec_dt, lsoa11cd)
-setkey(lsoa_DT, lsoa11cd)
-
-merged_lsoa_DT <- gas_dt[, .(lsoa11cd, mean_gas_kWh, total_gas_kWh, nGasMeters)][elec_dt[, .(lsoa11cd,mean_elec_kWh,total_elec_kWh,nElecMeters)]][lsoa_DT]
-
-# remove the record for postcodes which did not have a postcode sector
-message("How many LSOAs do not map to a postcode sector?")
-nrow(merged_lsoa_DT[is.na(pcd_sector)])
-head(merged_lsoa_DT[is.na(pcd_sector)])
-
-# !is.na(pcd_sector)
-postcode_sector_energy <- merged_lsoa_DT[, .(nLSOAs = .N,
-                                                               nPostcodes = sum(nPostcodes),
-                                             mean_gas_kWh = mean(mean_gas_kWh, na.rm = TRUE),
-                                             total_gas_kWh = sum(total_gas_kWh, na.rm = TRUE),
-                                             mean_elec_kWh = mean(mean_elec_kWh, na.rm = TRUE),
-                                             total_elec_kWh = sum(total_elec_kWh, na.rm = TRUE),
-                                             nGasMeters = sum(nGasMeters, na.rm = TRUE),
-                                             nElecMeters = sum(nElecMeters, na.rm = TRUE)), keyby = .(pcd_sector, ladnm, ladnmw)]
-#head(postcode_sector_energy)
+```{r loadCats}
 
 # cats
 cats_DT <- data.table::fread(paste0(dp, "UK_Animal and Plant Health Agency/APHA0372-Cat_Density_Postcode_District.csv"))
 cats_DT[, pcd_sector := PostcodeDistrict]
 
 setkey(cats_DT, pcd_sector)
-setkey(postcode_sector_energy, pcd_sector)
 
-pc_district <- cats_DT[postcode_sector_energy]
+nrow(cats_DT)
 
+setkey(pc_sector_energy_dt, pcd_sector)
+
+nrow(pc_sector_energy_dt)
+
+pc_district <- merge(cats_DT, pc_sector_energy_dt , by = "pcd_sector") # keeps only postcode sectors where we have cat data
+
+nrow(pc_district)
+# there are postcode sectors with no electricity meters - for now we'll remove them
+# pending further investigation
+
+summary(pc_district)
+table(pc_district$GOR10NM, pc_district$rgn)
 ```
 
 We could also use `@SERL_UK`'s [smart meter gas/elec data](https://twitter.com/dataknut/status/1466712963222540289?s=20), dwelling characteristics and pet ownership (but no species detail :-) 
@@ -118,53 +93,64 @@ Well, in some places there seem to be a lot of estimated cats...
 pc_district[, mean_Cats := EstimatedCatPopulation/nElecMeters]
 head(pc_district[, .(PostcodeDistrict, EstimatedCatPopulation, mean_Cats, nPostcodes, nElecMeters)][order(-mean_Cats)])
 ```
-LL23 is on the south east corner of the [Snowdonia National Park...](https://www.google.co.uk/maps/place/Bala+LL23/@52.8953768,-3.775299,11z/data=!3m1!4b1!4m5!3m4!1s0x4865404ae1208f67:0x65a437b997c0dfb2!8m2!3d52.8825403!4d-3.6497989) while EH25 is on the outskirts of [Edinburgh](https://www.google.co.uk/maps/place/EH25/@55.8518992,-3.2076308,13z/data=!4m5!3m4!1s0x4887bf6548dd78d7:0xd6f980c5a3b93592!8m2!3d55.8560564!4d-3.1733124).
+SA63 is in south west [Wales](https://www.google.co.uk/maps/place/Clarbeston+Road+SA63/@51.8852685,-4.9147384,12z/data=!3m1!4b1!4m5!3m4!1s0x4868d5805b12efe5:0xca42ee4bc84a2f77!8m2!3d51.8900045!4d-4.8502065) while LL23 is on the edge of the [Snowdonia National Park](https://www.google.co.uk/maps/place/Bala+LL23/@52.8953768,-3.7752989,11z/data=!3m1!4b1!4m5!3m4!1s0x4865404ae1208f67:0x65a437b997c0dfb2!8m2!3d52.8825403!4d-3.6497989)....
 
 ## More dwellings, more cats?
 
 Is there a correlation between estimated total cats and the number of dwellings (electricity meters)?
 
 ```{r testTotalElecMeters}
-ggplot2::ggplot(pc_district, aes(x = nElecMeters , y = EstimatedCatPopulation)) +
+ggplot2::ggplot(pc_district, aes(x = nElecMeters , y = EstimatedCatPopulation, 
+                                 colour = GOR10NM)) +
   geom_point() +
   geom_smooth()
 ```
 
+# More cats, more gas?
+
 Is there a correlation between estimated cat ownership and total gas use?
 
 ```{r testTotalGas}
-ggplot2::ggplot(pc_district, aes(x = EstimatedCatPopulation, y = total_gas_kWh)) +
+ggplot2::ggplot(pc_district, aes(x = EstimatedCatPopulation, y = total_gas_kWh,
+                                 colour = GOR10NM)) +
   geom_point()
 ```
 
 Or mean gas use and mean cats?
 
 ```{r testMeanGas}
-ggplot2::ggplot(pc_district, aes(x = mean_Cats, y = mean_gas_kWh)) +
+pc_district[, mean_gas_kWh := total_gas_kWh/nGasMeters]
+ggplot2::ggplot(pc_district, aes(x = mean_Cats, y = mean_gas_kWh, colour = GOR10NM)) +
   geom_point()
 ```
+
+# More cats, more electricity?
 
 Or total electricity use and cats?
 
 ```{r testTotalElec}
-ggplot2::ggplot(pc_district, aes(x = EstimatedCatPopulation, y = total_elec_kWh)) +
+ggplot2::ggplot(pc_district, aes(x = EstimatedCatPopulation, y = total_elec_kWh, colour = GOR10NM)) +
   geom_point()
 ```
 
 Or mean elec use and mean cats?
 
 ```{r testMeanElec}
-ggplot2::ggplot(pc_district, aes(x = mean_Cats, y = mean_elec_kWh)) +
+pc_district[, mean_elec_kWh := total_elec_kWh/nGasMeters]
+ggplot2::ggplot(pc_district, aes(x = mean_Cats, y = mean_elec_kWh, colour = GOR10NM)) +
   geom_point()
 ```
+
+# More cats, more energy?
 
 Or total energy use and total cats?
 
 ```{r testTotalEnergy}
 pc_district[, total_energy_kWh := total_gas_kWh + total_elec_kWh]
 
-ggplot2::ggplot(pc_district, aes(x = EstimatedCatPopulation, y = total_energy_kWh)) +
-  geom_point()
+ggplot2::ggplot(pc_district, aes(x = EstimatedCatPopulation, y = total_energy_kWh, colour = GOR10NM)) +
+  geom_point() +
+  geom_smooth()
 ```
 
 Well, there may be something in there? Let's try a boxplot by cat deciles... Figure \@ref(fig:catDeciles)
@@ -174,8 +160,10 @@ pc_district[, cat_decile := dplyr::ntile(EstimatedCatPopulation, 10)]
 #head(pc_district[is.na(cat_decile)])
 ggplot2::ggplot(pc_district[!is.na(cat_decile)], aes(x = as.factor(cat_decile), y = total_energy_kWh/1000000)) +
   geom_boxplot() +
+  facet_wrap(. ~ GOR10NM) +
   labs(x = "Cat ownership deciles",
-       y = "Total domestic electricity & gas GWh")
+       y = "Total domestic electricity & gas GWh",
+       caption = "Postcode sectors (Data: BEIS & Animal and Plant Health Agency, 2015)")
 ```
 Well...
 
