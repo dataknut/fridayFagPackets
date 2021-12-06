@@ -277,7 +277,7 @@ div.tocify {
 <h1 class="title toc-ignore">#backOfaFagPacket: Its the Cats, stupid</h1>
 <h3 class="subtitle">Does cat ownership correlate with home energy demand?</h3>
 <h4 class="author">Ben Anderson</h4>
-<h4 class="date">Last run at: 2021-12-04 23:28:31</h4>
+<h4 class="date">Last run at: 2021-12-06 21:16:08</h4>
 
 </div>
 
@@ -303,8 +303,7 @@ div.tocify {
 <p>For now we’re using:</p>
 <ul>
 <li>postcode sector level estimates of cat ownership in the UK in 2015. Does such a thing exist? <a href="https://data.gov.uk/dataset/febd29ff-7e7d-4f82-9908-031f7f0e0860/cat-population-per-postcode-district">YEAH</a>! “<em>This dataset gives the mean estimate for population for each district, and was generated as part of the delivery of commissioned research. The data contained within this dataset are modelled figures, based on national estimates for pet population, and available information on Veterinary activity across GB. The data are accurate as of 01/01/2015. The data provided are summarised to the postcode district level. Further information on this research is available in a research publication by James Aegerter, David Fouracre &amp; Graham C. Smith, discussing the structure and density of pet cat and dog populations across Great Britain.</em>”</li>
-<li>LSOA level data on <a href="https://www.gov.uk/government/collections/sub-national-gas-consumption-data">gas</a> and <a href="https://www.gov.uk/government/collections/sub-national-electricity-consumption-data">electricity</a> ‘consumption’ at LSOA/SOA level for 2015 aggregated to postcode sectors</li>
-<li><a href="https://www.gov.uk/government/statistics/english-indices-of-deprivation-2019">Indices of Deprivation 2019</a> for England</li>
+<li>experimental postcode level data on domestic <a href="https://www.gov.uk/government/collections/sub-national-gas-consumption-data">gas</a> and <a href="https://www.gov.uk/government/collections/sub-national-electricity-consumption-data">electricity</a> ‘consumption’ for 2015 aggregated to postcode sectors</li>
 </ul>
 <pre class="r"><code># cats
 cats_DT &lt;- data.table::fread(paste0(dp, &quot;UK_Animal and Plant Health Agency/APHA0372-Cat_Density_Postcode_District.csv&quot;))
@@ -394,7 +393,7 @@ head(pc_district[, .(PostcodeDistrict, EstimatedCatPopulation, mean_Cats, nPostc
 ## 4:             BS28                4034.58  8.945854        226         451
 ## 5:             LA17                1341.85  8.886424         61         151
 ## 6:             EH25                7489.82  8.884721          1         843</code></pre>
-<p>SA63 is in south west <a href="https://www.google.co.uk/maps/place/Clarbeston+Road+SA63/@51.8852685,-4.9147384,12z/data=!3m1!4b1!4m5!3m4!1s0x4868d5805b12efe5:0xca42ee4bc84a2f77!8m2!3d51.8900045!4d-4.8502065">Wales</a> while LL23 is on the edge of the Snowdonia National Park <a href="https://www.google.co.uk/maps/place/Bala+LL23/@52.8953768,-3.7752989,11z/data=!3m1!4b1!4m5!3m4!1s0x4865404ae1208f67:0x65a437b997c0dfb2!8m2!3d52.8825403!4d-3.6497989">Edinburgh</a>….</p>
+<p>SA63 is in south west <a href="https://www.google.co.uk/maps/place/Clarbeston+Road+SA63/@51.8852685,-4.9147384,12z/data=!3m1!4b1!4m5!3m4!1s0x4868d5805b12efe5:0xca42ee4bc84a2f77!8m2!3d51.8900045!4d-4.8502065">Wales</a> while LL23 is on the edge of the <a href="https://www.google.co.uk/maps/place/Bala+LL23/@52.8953768,-3.7752989,11z/data=!3m1!4b1!4m5!3m4!1s0x4865404ae1208f67:0x65a437b997c0dfb2!8m2!3d52.8825403!4d-3.6497989">Snowdonia National Park</a>….</p>
 <div id="more-dwellings-more-cats" class="section level2" number="4.1">
 <h2><span class="header-section-number">4.1</span> More dwellings, more cats?</h2>
 <p>Is there a correlation between estimated total cats and the number of dwellings (electricity meters)?</p>

@@ -54,8 +54,7 @@ Inspired by `@giulio_mattioli`'s [recent paper on the car dependence of dog owne
 For now we're using:
 
  * postcode sector level estimates of cat ownership in the UK in 2015. Does such a thing exist? [YEAH](https://data.gov.uk/dataset/febd29ff-7e7d-4f82-9908-031f7f0e0860/cat-population-per-postcode-district)! "_This dataset gives the mean estimate for population for each district, and was generated as part of the delivery of commissioned research. The data contained within this dataset are modelled figures, based on national estimates for pet population, and available information on Veterinary activity across GB. The data are accurate as of 01/01/2015. The data provided are summarised to the postcode district level. Further information on this research is available in a research publication by James Aegerter, David Fouracre & Graham C. Smith, discussing the structure and density of pet cat and dog populations across Great Britain._"
- * LSOA level data on [gas](https://www.gov.uk/government/collections/sub-national-gas-consumption-data) and [electricity](https://www.gov.uk/government/collections/sub-national-electricity-consumption-data) 'consumption' at LSOA/SOA level for 2015 aggregated to postcode sectors
- * [Indices of Deprivation 2019](https://www.gov.uk/government/statistics/english-indices-of-deprivation-2019) for England
+ * experimental postcode level data on domestic  [gas](https://www.gov.uk/government/collections/sub-national-gas-consumption-data) and [electricity](https://www.gov.uk/government/collections/sub-national-electricity-consumption-data) 'consumption' for 2015 aggregated to postcode sectors
 
 ```{r loadCats}
 
