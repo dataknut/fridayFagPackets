@@ -5,6 +5,8 @@ library(data.table)
 library(here)
 
 # Functions ----
+source(here::here("R", "functions.R"))
+
 makeReport <- function(f){
   # default = html
   rmarkdown::render(input = paste0(here::here("itsTheCatsStupid", f), ".Rmd"),
@@ -29,28 +31,34 @@ authors = "Ben Anderson"
 #> load the postcode data here (slow)
 
 postcodes_elec_dt <- data.table::fread(paste0(dp, "beis/subnationalElec/Postcode_level_all_meters_electricity_2015.csv"))
-postcodes_elec_dt[, pcd_sector := data.table::tstrsplit(POSTCODE, " ", keep = c(1))]
-pc_sector_elec_dt <- postcodes_elec_dt[, .(nPostcodes = .N, 
-                                           total_elec_kWh = sum(`Consumption (kWh)`),
-                                           nElecMeters = sum(`Number of meters`)
-                                           ), keyby = .(pcd_sector)]
-nrow(pc_sector_elec_dt)
+postcodes_elec_dt[, pcd_district := data.table::tstrsplit(POSTCODE, " ", keep = c(1))]
+pc_district_elec_dt <- postcodes_elec_dt[, .(elec_nPostcodes = .N, 
+                                           total_elec_kWh = sum(`Consumption (kWh)`, na.rm = TRUE),
+                                           nElecMeters = sum(`Number of meters`, na.rm = TRUE)
+                                           ), keyby = .(pcd_district)]
+nrow(pc_district_elec_dt)
 
 postcodes_gas_dt <- data.table::fread(paste0(dp, "beis/subnationalGas/Experimental_Gas_Postcode_Statistics_2015.csv"))
-postcodes_gas_dt[, pcd_sector := data.table::tstrsplit(POSTCODE, " ", keep = c(1))]
-pc_sector_gas_dt <- postcodes_gas_dt[, .(total_gas_kWh = sum(`Consumption (kWh)`),
-                                           nGasMeters = sum(`Number of meters`)), keyby = .(pcd_sector)]
-nrow(pc_sector_gas_dt)
+postcodes_gas_dt[, pcd_district := data.table::tstrsplit(POSTCODE, " ", keep = c(1))]
+pc_district_gas_dt <- postcodes_gas_dt[, .(gas_nPostcodes = .N,
+                                           total_gas_kWh = sum(`Consumption (kWh)`, na.rm = TRUE),
+                                           nGasMeters = sum(`Number of meters`, na.rm = TRUE)), keyby = .(pcd_district)]
+nrow(pc_district_gas_dt)
 
-setkey(pc_sector_elec_dt, pcd_sector)
-setkey(pc_sector_gas_dt, pcd_sector)
+setkey(pc_district_elec_dt, pcd_district)
+setkey(pc_district_gas_dt, pcd_district)
 
-pc_sector_energy_dt <- pc_sector_gas_dt[pc_sector_elec_dt]
+pc_district_energy_dt <- pc_district_gas_dt[pc_district_elec_dt]
 
-pc_sector_region_dt <- data.table::fread(here::here("data", "postcode_sectors_dt.csv"))
-setkey(pc_sector_region_dt, pcd_sector)
+# load one we prepared earlier using https://git.soton.ac.uk/SERG/mapping-with-r/-/blob/master/R/postcodeWrangling.R
+pc_district_region_dt <- data.table::fread(paste0(dp, "UK_postcodes/postcode_districts_2016.csv"))
+setkey(pc_district_region_dt, pcd_district)
+nrow(pc_district_region_dt)
 
-pc_sector_energy_dt <- pc_sector_region_dt[pc_sector_energy_dt]
+pc_district_region_dt[, .(n = .N), keyby = .(GOR10CD, GOR10NM)]
+nrow(pc_district_energy_dt)
+pc_district_energy_dt <- pc_district_energy_dt[pc_district_region_dt]
+nrow(pc_district_energy_dt)
 
 #> re-run report here ----
 makeReport(rmdFile)
