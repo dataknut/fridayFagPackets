@@ -47,40 +47,45 @@ library(ggplot2)
 ```
 
 # It's the cats, stupid
-Inspired by `@giulio_mattioli`'s [recent paper on the car dependence of dog ownership](https://twitter.com/giulio_mattioli/status/1466361022747455492) we thought we'd take a look at [cats](https://twitter.com/giulio_mattioli/status/1466710752606179331) and residential energy demand. Why? Well people like to keep their cats warm but, more importantly, they also cut big holes in doors and/or windows to let the cats in and out. Hardly a thermally sealed envelope!
+Inspired by `@giulio_mattioli`'s [recent paper on the car dependence of dog ownership](https://twitter.com/giulio_mattioli/status/1466361022747455492) we thought we'd take a look at [cats](https://twitter.com/giulio_mattioli/status/1466710752606179331) and residential energy demand. Why? Well people like to keep their cats warm but, more importantly, they also cut big holes in doors and/or windows to let the cats in and out. Hardly a thermally sealed envelope...
 
 # What's the data?
 
-For now we're using:
+We could also use `@SERL_UK`'s [smart meter gas/elec data](https://twitter.com/dataknut/status/1466712963222540289?s=20), dwelling characteristics and pet ownership (but no species detail :-) 
 
- * postcode sector level estimates of cat ownership in the UK in 2015. Does such a thing exist? [YEAH](https://data.gov.uk/dataset/febd29ff-7e7d-4f82-9908-031f7f0e0860/cat-population-per-postcode-district)! "_This dataset gives the mean estimate for population for each district, and was generated as part of the delivery of commissioned research. The data contained within this dataset are modelled figures, based on national estimates for pet population, and available information on Veterinary activity across GB. The data are accurate as of 01/01/2015. The data provided are summarised to the postcode district level. Further information on this research is available in a research publication by James Aegerter, David Fouracre & Graham C. Smith, discussing the structure and density of pet cat and dog populations across Great Britain._"
- * experimental postcode level data on domestic  [gas](https://www.gov.uk/government/collections/sub-national-gas-consumption-data) and [electricity](https://www.gov.uk/government/collections/sub-national-electricity-consumption-data) 'consumption' for 2015 aggregated to postcode sectors
+So for now we're using:
+
+ * postcode district level estimates of cat ownership in the UK in 2015. Does such a thing exist? [YEAH](https://data.gov.uk/dataset/febd29ff-7e7d-4f82-9908-031f7f0e0860/cat-population-per-postcode-district)! "_This dataset gives the mean estimate for population for each district, and was generated as part of the delivery of commissioned research. The data contained within this dataset are modelled figures, based on national estimates for pet population, and available information on Veterinary activity across GB. The data are accurate as of 01/01/2015. The data provided are summarised to the postcode district level. Further information on this research is available in a research publication by James Aegerter, David Fouracre & Graham C. Smith, discussing the structure and density of pet cat and dog populations across Great Britain._"
+ * experimental postcode level data on domestic  [gas](https://www.gov.uk/government/collections/sub-national-gas-consumption-data) and [electricity](https://www.gov.uk/government/collections/sub-national-electricity-consumption-data) 'consumption' for 2015 aggregated to postcode districts
 
 ```{r loadCats}
 
 # cats
 cats_DT <- data.table::fread(paste0(dp, "UK_Animal and Plant Health Agency/APHA0372-Cat_Density_Postcode_District.csv"))
-cats_DT[, pcd_sector := PostcodeDistrict]
+cats_DT[, pcd_district := PostcodeDistrict]
 
-setkey(cats_DT, pcd_sector)
+setkey(cats_DT, pcd_district)
 
 nrow(cats_DT)
 
-setkey(pc_sector_energy_dt, pcd_sector)
+setkey(pc_district_energy_dt, pcd_district)
 
-nrow(pc_sector_energy_dt)
+nrow(pc_district_energy_dt)
 
-pc_district <- merge(cats_DT, pc_sector_energy_dt , by = "pcd_sector") # keeps only postcode sectors where we have cat data
+pc_district <- pc_district_energy_dt[cats_DT] # keeps only postcode sectors where we have cat data
+# this may include areas where we have no energy data
 
 nrow(pc_district)
+nrow(pc_district[!is.na(GOR10NM)])
 # there are postcode sectors with no electricity meters - for now we'll remove them
 # pending further investigation
 
-summary(pc_district)
-table(pc_district$GOR10NM, pc_district$rgn)
-```
+t <- pc_district[!is.na(GOR10NM), .(nPostcodeDistricts = .N,
+                     sumCats = sum(EstimatedCatPopulation)), keyby=.(GOR10NM)]
 
-We could also use `@SERL_UK`'s [smart meter gas/elec data](https://twitter.com/dataknut/status/1466712963222540289?s=20), dwelling characteristics and pet ownership (but no species detail :-) 
+t[, catsPerDistrict := sumCats/nPostcodeDistricts]
+makeFlexTable(t, cap = "Regions covered")
+```
 
 # What do we find?
 
@@ -99,19 +104,20 @@ SA63 is in south west [Wales](https://www.google.co.uk/maps/place/Clarbeston+Roa
 Is there a correlation between estimated total cats and the number of dwellings (electricity meters)?
 
 ```{r testTotalElecMeters}
-ggplot2::ggplot(pc_district, aes(x = nElecMeters , y = EstimatedCatPopulation, 
+ggplot2::ggplot(pc_district[!is.na(GOR10NM)], aes(x = nElecMeters , y = EstimatedCatPopulation, 
                                  colour = GOR10NM)) +
   geom_point() +
   geom_smooth()
 ```
 
-# More cats, more gas?
+## More cats, more gas?
 
 Is there a correlation between estimated cat ownership and total gas use?
 
 ```{r testTotalGas}
-ggplot2::ggplot(pc_district, aes(x = EstimatedCatPopulation, y = total_gas_kWh,
-                                 colour = GOR10NM)) +
+ggplot2::ggplot(pc_district[!is.na(GOR10NM)], 
+                aes(x = EstimatedCatPopulation, y = total_gas_kWh, colour = GOR10NM)) +
+  geom_smooth() +
   geom_point()
 ```
 
@@ -119,45 +125,50 @@ Or mean gas use and mean cats?
 
 ```{r testMeanGas}
 pc_district[, mean_gas_kWh := total_gas_kWh/nGasMeters]
-ggplot2::ggplot(pc_district, aes(x = mean_Cats, y = mean_gas_kWh, colour = GOR10NM)) +
+ggplot2::ggplot(pc_district[!is.na(GOR10NM)], 
+                aes(x = mean_Cats, y = mean_gas_kWh, colour = GOR10NM)) +
+  geom_smooth() +
   geom_point()
 ```
 
-# More cats, more electricity?
+## More cats, more electricity?
 
 Or total electricity use and cats?
 
 ```{r testTotalElec}
-ggplot2::ggplot(pc_district, aes(x = EstimatedCatPopulation, y = total_elec_kWh, colour = GOR10NM)) +
+ggplot2::ggplot(pc_district[!is.na(GOR10NM)], aes(x = EstimatedCatPopulation, y = total_elec_kWh, colour = GOR10NM)) +
+  geom_smooth() +
   geom_point()
 ```
 
 Or mean elec use and mean cats?
 
 ```{r testMeanElec}
-pc_district[, mean_elec_kWh := total_elec_kWh/nGasMeters]
-ggplot2::ggplot(pc_district, aes(x = mean_Cats, y = mean_elec_kWh, colour = GOR10NM)) +
+pc_district[, mean_elec_kWh := total_elec_kWh/nElecMeters]
+ggplot2::ggplot(pc_district[!is.na(GOR10NM)], aes(x = mean_Cats, y = mean_elec_kWh, colour = GOR10NM)) +
+  geom_smooth() +
   geom_point()
 ```
 
-# More cats, more energy?
+## More cats, more energy?
 
 Or total energy use and total cats?
 
 ```{r testTotalEnergy}
 pc_district[, total_energy_kWh := total_gas_kWh + total_elec_kWh]
 
-ggplot2::ggplot(pc_district, aes(x = EstimatedCatPopulation, y = total_energy_kWh, colour = GOR10NM)) +
-  geom_point() +
-  geom_smooth()
+ggplot2::ggplot(pc_district[!is.na(GOR10NM)], aes(x = EstimatedCatPopulation, y = total_energy_kWh, colour = GOR10NM)) +
+  geom_smooth() +
+  geom_point()
+  
 ```
 
-Well, there may be something in there? Let's try a boxplot by cat deciles... Figure \@ref(fig:catDeciles)
+Let's try a boxplot by cat deciles... Figure \@ref(fig:catDeciles) suggests the median energy use is higher in postcode districts with higher cat ownership.
 
 ```{r catDeciles, fig.cap = "Cat ownership deciles and total annual residenital electricity & gas use"}
 pc_district[, cat_decile := dplyr::ntile(EstimatedCatPopulation, 10)]
 #head(pc_district[is.na(cat_decile)])
-ggplot2::ggplot(pc_district[!is.na(cat_decile)], aes(x = as.factor(cat_decile), y = total_energy_kWh/1000000)) +
+ggplot2::ggplot(pc_district[!is.na(cat_decile) & !is.na(GOR10NM)], aes(x = as.factor(cat_decile), y = total_energy_kWh/1000000)) +
   geom_boxplot() +
   facet_wrap(. ~ GOR10NM) +
   labs(x = "Cat ownership deciles",
@@ -170,7 +181,7 @@ Well...
 pc_district[, total_energy_kWh := total_gas_kWh + total_elec_kWh]
 pc_district[, mean_energy_kWh := total_energy_kWh/nElecMeters]
 
-ggplot2::ggplot(pc_district, aes(x = mean_Cats, y = mean_energy_kWh)) +
+ggplot2::ggplot(pc_district[!is.na(GOR10NM)], aes(x = mean_Cats, y = mean_energy_kWh)) +
   geom_point()
 ```
 
