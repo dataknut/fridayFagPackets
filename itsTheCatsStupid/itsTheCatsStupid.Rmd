@@ -74,6 +74,7 @@ nrow(pc_district_energy_dt)
 
 pc_district <- pc_district_energy_dt[cats_DT] # keeps only postcode districts where we have cat data
 # this may include areas where we have no energy data
+pc_district[, mean_Cats := EstimatedCatPopulation/nElecMeters]
 
 nrow(pc_district)
 nrow(pc_district[!is.na(GOR10NM)])
@@ -94,7 +95,7 @@ Well, in some places there seem to be a lot of estimated cats per household...
 (We calculated mean cats per household by dividing by the number of electricity meters - probably a reasonable proxy)
 
 ```{r maxCats}
-pc_district[, mean_Cats := EstimatedCatPopulation/nElecMeters]
+
 t <- head(pc_district[, .(PostcodeDistrict, EstimatedCatPopulation, mean_Cats, nPostcodes, nElecMeters)][order(-mean_Cats)],10)
 makeFlexTable(t, cap = "Top 10 postcode districts by number of cats per 'household'")
 ```
@@ -127,7 +128,7 @@ ggplot2::ggplot(pc_district[!is.na(GOR10NM)],
 Or mean gas use and mean cats?
 
 ```{r testMeanGas}
-pc_district[, mean_gas_kWh := total_gas_kWh/nGasMeters]
+
 ggplot2::ggplot(pc_district[!is.na(GOR10NM)], 
                 aes(x = mean_Cats, y = mean_gas_kWh, colour = GOR10NM)) +
   geom_smooth() +
@@ -147,7 +148,7 @@ ggplot2::ggplot(pc_district[!is.na(GOR10NM)], aes(x = EstimatedCatPopulation, y 
 Or mean elec use and mean cats?
 
 ```{r testMeanElec}
-pc_district[, mean_elec_kWh := total_elec_kWh/nElecMeters]
+
 ggplot2::ggplot(pc_district[!is.na(GOR10NM)], aes(x = mean_Cats, y = mean_elec_kWh, colour = GOR10NM)) +
   geom_smooth() +
   geom_point()
@@ -158,7 +159,10 @@ ggplot2::ggplot(pc_district[!is.na(GOR10NM)], aes(x = mean_Cats, y = mean_elec_k
 Or total energy use and total cats?
 
 ```{r testTotalEnergy}
+
+pc_district[, total_gas_kWh := ifelse(is.na(total_gas_kWh), 0, total_gas_kWh)]
 pc_district[, total_energy_kWh := total_gas_kWh + total_elec_kWh]
+pc_district[, mean_energy_kWh := total_energy_kWh/nElecMeters]
 
 ggplot2::ggplot(pc_district[!is.na(GOR10NM)], aes(x = EstimatedCatPopulation, y = total_energy_kWh, colour = GOR10NM)) +
   geom_smooth() +

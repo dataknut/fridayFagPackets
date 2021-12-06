@@ -49,6 +49,8 @@ setkey(pc_district_elec_dt, pcd_district)
 setkey(pc_district_gas_dt, pcd_district)
 
 pc_district_energy_dt <- pc_district_gas_dt[pc_district_elec_dt]
+pc_district_energy_dt[, mean_gas_kWh := total_gas_kWh/nGasMeters]
+pc_district_energy_dt[, mean_elec_kWh := total_elec_kWh/nElecMeters]
 
 # load one we prepared earlier using https://git.soton.ac.uk/SERG/mapping-with-r/-/blob/master/R/postcodeWrangling.R
 pc_district_region_dt <- data.table::fread(paste0(dp, "UK_postcodes/postcode_districts_2016.csv"))
