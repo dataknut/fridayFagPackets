@@ -72,12 +72,12 @@ setkey(pc_district_energy_dt, pcd_district)
 
 nrow(pc_district_energy_dt)
 
-pc_district <- pc_district_energy_dt[cats_DT] # keeps only postcode sectors where we have cat data
+pc_district <- pc_district_energy_dt[cats_DT] # keeps only postcode districts where we have cat data
 # this may include areas where we have no energy data
 
 nrow(pc_district)
 nrow(pc_district[!is.na(GOR10NM)])
-# there are postcode sectors with no electricity meters - for now we'll remove them
+# there are postcode districts with no electricity meters - for now we'll remove them
 # pending further investigation
 
 t <- pc_district[!is.na(GOR10NM), .(nPostcodeDistricts = .N,
@@ -89,15 +89,18 @@ makeFlexTable(t, cap = "Regions covered")
 
 # What do we find?
 
-Well, in some places there seem to be a lot of estimated cats...
+Well, in some places there seem to be a lot of estimated cats per household...
 
 (We calculated mean cats per household by dividing by the number of electricity meters - probably a reasonable proxy)
 
 ```{r maxCats}
 pc_district[, mean_Cats := EstimatedCatPopulation/nElecMeters]
-head(pc_district[, .(PostcodeDistrict, EstimatedCatPopulation, mean_Cats, nPostcodes, nElecMeters)][order(-mean_Cats)])
+t <- head(pc_district[, .(PostcodeDistrict, EstimatedCatPopulation, mean_Cats, nPostcodes, nElecMeters)][order(-mean_Cats)],10)
+makeFlexTable(t, cap = "Top 10 postcode districts by number of cats per 'household'")
 ```
 SA63 is in south west [Wales](https://www.google.co.uk/maps/place/Clarbeston+Road+SA63/@51.8852685,-4.9147384,12z/data=!3m1!4b1!4m5!3m4!1s0x4868d5805b12efe5:0xca42ee4bc84a2f77!8m2!3d51.8900045!4d-4.8502065) while LL23 is on the edge of the [Snowdonia National Park](https://www.google.co.uk/maps/place/Bala+LL23/@52.8953768,-3.7752989,11z/data=!3m1!4b1!4m5!3m4!1s0x4865404ae1208f67:0x65a437b997c0dfb2!8m2!3d52.8825403!4d-3.6497989)....
+
+Do these places have some largish catteries but few houses? 8,233 is a lot of estimated cats.
 
 ## More dwellings, more cats?
 
@@ -173,7 +176,7 @@ ggplot2::ggplot(pc_district[!is.na(cat_decile) & !is.na(GOR10NM)], aes(x = as.fa
   facet_wrap(. ~ GOR10NM) +
   labs(x = "Cat ownership deciles",
        y = "Total domestic electricity & gas GWh",
-       caption = "Postcode sectors (Data: BEIS & Animal and Plant Health Agency, 2015)")
+       caption = "Postcode districts (Data: BEIS & Animal and Plant Health Agency, 2015)")
 ```
 Well...
 
