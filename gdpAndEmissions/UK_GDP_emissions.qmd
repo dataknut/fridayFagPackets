@@ -39,7 +39,7 @@ dt_pc <- data.table::fread(here::here("data", "co2-emissions-and-gdp-per-capita.
 
 # UK: absolute GDP & emissions
 
-First we'll try production emissions \@fig-ukPlotProd.
+First we'll try production emissions.
 
 ```{r}
 #| label: fig-ukPlotProd
@@ -53,10 +53,10 @@ ggplot2::ggplot(plotDT, aes(y = as.numeric(`GDP, PPP (constant 2017 internationa
                             alpha = Year)) +
   geom_point() +
   labs(x = "Annual CO2 emissions (production-based, gT)",
-       y = "GDP $bn")
+       y = "GDP $bn (constant 2017 $)")
 ```
 
-Next we'll try consumption emissions \@fig-ukPlotCons.
+Next we'll try consumption emissions.
 
 Note that 2020 consumption-based emissions data is missing so you don't see the downtick
 
@@ -71,14 +71,14 @@ ggplot2::ggplot(plotDT, aes(y = as.numeric(`GDP, PPP (constant 2017 internationa
                             alpha = Year)) +
   geom_point() +
   labs(x = "Annual CO2 emissions (consumption-based, gT)",
-       y = "GDP $bn")
+       y = "GDP $bn (constant 2017 $)")
 ```
 
 # UK: per capita GDP & emissions
 
 Since we'll be dividing everything pairwise by the same denominator, nothing much should change...
 
-First we'll try production emissions \@fig-ukPlotProdPcc.
+First we'll try production emissions.
 
 ```{r}
 #| label: fig-ukPlotProdPcc
@@ -92,10 +92,10 @@ ggplot2::ggplot(plotDT, aes(y = as.numeric(`GDP per capita, PPP (constant 2017 i
                             alpha = Year)) +
   geom_point() +
   labs(x = "Annual CO2 emissions per capita (production-based, T)",
-       y = "GDP per capita $")
+       y = "GDP per capita (constant 2017 $)")
 ```
 
-Next we'll try consumption emissions \@fig-ukPlotConsPcc.
+Next we'll try consumption emissions.
 
 Note that 2020 consumption-based emissions data is missing so you don't see the downtick
 
@@ -110,8 +110,20 @@ ggplot2::ggplot(plotDT, aes(y = as.numeric(`GDP per capita, PPP (constant 2017 i
                             alpha = Year)) +
   geom_point() +
   labs(x = "Annual CO2 emissions per capita (consumption-based, T)",
-       y = "GDP per capita $")
+       y = "GDP per capita (constant 2017 $)")
 ```
+
+# Whom do we love?
+
+[quarto](https://quarto.org/)
+
+[data.table](https://www.rdocumentation.org/packages/data.table/versions/1.14.2)
+
+[ggplot2](https://www.rdocumentation.org/packages/ggplot2/versions/3.3.6)
+
+[here](https://www.rdocumentation.org/packages/here/versions/1.0.1)
+
+[skimr](https://www.rdocumentation.org/packages/skimr/versions/2.1.4)
 
 # Data descriptions
 
