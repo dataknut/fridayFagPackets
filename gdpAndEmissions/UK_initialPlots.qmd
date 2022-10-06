@@ -1,0 +1,65 @@
+---
+title: "GDP & emissions"
+author: "Ben & Tom"
+format: 
+  html:
+    code-fold: true
+editor: visual
+---
+
+```{r}
+#| label: setup
+#| echo: false
+#| warning: false
+library(data.table)
+library(here)
+library(ggplot2)
+```
+
+## Data
+
+Downloaded from the awesome [OurWorldInData](https://ourworldindata.org/grapher/co2-emissions-and-gdp?country=~GBR).
+
+```{r}
+#| label: loasdData
+
+dt <- data.table::fread(here::here("data", "co2-emissions-and-gdp.csv"))
+
+```
+
+## Simple UK plot
+
+First we'll try production emissions \@fig-ukPlotProd.
+
+```{r}
+#| label: fig-ukPlotProd
+#| fig-cap: UK GDP vs production emissions over time.
+#| warning: false
+
+plotDT <- dt[Entity == "United Kingdom"]
+
+ggplot2::ggplot(plotDT, aes(y = as.numeric(`GDP, PPP (constant 2017 international $)`)/1000000000, 
+                            x = as.numeric(`Annual CO2 emissions`)/1000000,
+                            alpha = Year)) +
+  geom_point() +
+  labs(x = "Annual CO2 emissions (production-based, gT)",
+       y = "GDP $bn")
+```
+
+Next we'll try consumption emissions \@fig-ukPlotCons.
+
+Note that 2020 consumption-based emissions data is missing so you don't see the downtick
+
+```{r}
+#| label: fig-ukPlotCons
+#| fig-cap: UK GDP vs consumption emissions over time.
+#| warning: false
+plotDT <- dt[Entity == "United Kingdom"]
+
+ggplot2::ggplot(plotDT, aes(y = as.numeric(`GDP, PPP (constant 2017 international $)`)/1000000000, 
+                            x = as.numeric(`Annual consumption-based CO2 emissions`)/1000000,
+                            alpha = Year)) +
+  geom_point() +
+  labs(x = "Annual CO2 emissions (consumption-based, gT)",
+       y = "GDP $bn")
+```
