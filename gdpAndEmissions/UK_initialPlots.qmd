@@ -1,8 +1,11 @@
 ---
 title: "GDP & emissions"
-author: "Ben & Tom"
+author: "Ben Anderson & Tom Rushby"
+date: "2022-10-06"
+date-modified: "`r Sys.time()`"
 format: 
   html:
+    toc: true
     code-fold: true
 editor: visual
 ---
@@ -14,20 +17,26 @@ editor: visual
 library(data.table)
 library(here)
 library(ggplot2)
+library(skimr)
 ```
 
-## Data
+# What's all this about de-growth?
+
+\<sigh\>
+
+# Data
 
 Downloaded from the awesome [OurWorldInData](https://ourworldindata.org/grapher/co2-emissions-and-gdp?country=~GBR).
 
 ```{r}
 #| label: loasdData
 
-dt <- data.table::fread(here::here("data", "co2-emissions-and-gdp.csv"))
+dt_abs <- data.table::fread(here::here("data", "co2-emissions-and-gdp.csv"))
+dt_pc <- data.table::fread(here::here("data", "co2-emissions-and-gdp-per-capita.csv"))
 
 ```
 
-## Simple UK plot
+# UK: absolute GDP & emissions
 
 First we'll try production emissions \@fig-ukPlotProd.
 
@@ -36,7 +45,7 @@ First we'll try production emissions \@fig-ukPlotProd.
 #| fig-cap: UK GDP vs production emissions over time.
 #| warning: false
 
-plotDT <- dt[Entity == "United Kingdom"]
+plotDT <- dt_abs[Entity == "United Kingdom"]
 
 ggplot2::ggplot(plotDT, aes(y = as.numeric(`GDP, PPP (constant 2017 international $)`)/1000000000, 
                             x = as.numeric(`Annual CO2 emissions`)/1000000,
@@ -54,7 +63,7 @@ Note that 2020 consumption-based emissions data is missing so you don't see the 
 #| label: fig-ukPlotCons
 #| fig-cap: UK GDP vs consumption emissions over time.
 #| warning: false
-plotDT <- dt[Entity == "United Kingdom"]
+plotDT <- dt_abs[Entity == "United Kingdom"]
 
 ggplot2::ggplot(plotDT, aes(y = as.numeric(`GDP, PPP (constant 2017 international $)`)/1000000000, 
                             x = as.numeric(`Annual consumption-based CO2 emissions`)/1000000,
@@ -62,4 +71,66 @@ ggplot2::ggplot(plotDT, aes(y = as.numeric(`GDP, PPP (constant 2017 internationa
   geom_point() +
   labs(x = "Annual CO2 emissions (consumption-based, gT)",
        y = "GDP $bn")
+```
+
+# UK: per capita GDP & emissions
+
+Since we'll be dividing everything pairwise by the same denominator, nothing much should change...
+
+First we'll try production emissions \@fig-ukPlotProdPcc.
+
+```{r}
+#| label: fig-ukPlotProdPcc
+#| fig-cap: UK GDP vs production emissions over time.
+#| warning: false
+
+plotDT <- dt_pc[Entity == "United Kingdom"]
+
+ggplot2::ggplot(plotDT, aes(y = as.numeric(`GDP per capita, PPP (constant 2017 international $)`), 
+                            x = as.numeric(`Annual CO2 emissions (per capita)`),
+                            alpha = Year)) +
+  geom_point() +
+  labs(x = "Annual CO2 emissions per capita (production-based, T)",
+       y = "GDP per capita $")
+```
+
+Next we'll try consumption emissions \@fig-ukPlotConsPcc.
+
+Note that 2020 consumption-based emissions data is missing so you don't see the downtick
+
+```{r}
+#| label: fig-ukPlotConsPcc
+#| fig-cap: UK GDP vs consumption emissions over time.
+#| warning: false
+plotDT <- dt_pc[Entity == "United Kingdom"]
+
+ggplot2::ggplot(plotDT, aes(y = as.numeric(`GDP per capita, PPP (constant 2017 international $)`), 
+                            x = as.numeric(`Annual consumption-based CO2 emissions (per capita)`),
+                            alpha = Year)) +
+  geom_point() +
+  labs(x = "Annual CO2 emissions per capita (consumption-based, T)",
+       y = "GDP per capita $")
+```
+
+# Data descriptions
+
+Check
+
+Skim the absolute data:
+
+```{r}
+#| label: skimAbs
+skimr::skim(dt_abs)
+```
+
+Skim the per capita data
+
+```{r}
+#| label: skimPC
+skimr::skim(dt_pc)
+```
+
+```{r}
+#| label: runToHere
+# hidden chunk
 ```
