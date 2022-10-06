@@ -5,6 +5,7 @@ date: "2022-10-06"
 date-modified: "`r Sys.time()`"
 format: 
   html:
+    self-contained: true
     toc: true
     code-fold: true
 editor: visual
