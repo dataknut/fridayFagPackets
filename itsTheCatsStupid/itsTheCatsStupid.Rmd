@@ -82,45 +82,74 @@ nrow(pc_district[!is.na(GOR10NM)])
 # pending further investigation
 
 t <- pc_district[!is.na(GOR10NM), .(nPostcodeDistricts = .N,
-                     sumCats = sum(EstimatedCatPopulation)), keyby=.(GOR10NM)]
+                     sumCats = sum(EstimatedCatPopulation),
+                     sumElecMeters = sum(nElecMeters, na.rm = TRUE)), keyby=.(GOR10NM)]
 
 t[, catsPerDistrict := sumCats/nPostcodeDistricts]
-makeFlexTable(t, cap = "Regions covered")
+t[, catsPerDwelling := sumCats/sumElecMeters]
+makeFlexTable(t, cap = "Regions covered (1 electricity meter assumed to be 1 dwelling)")
+
+message("Total number of electricity meters:", sum(t$sumElecMeters))
 ```
 
 # What do we find?
 
 Well, in some places there seem to be a lot of estimated cats per household...
 
-(We calculated mean cats per household by dividing by the number of electricity meters - probably a reasonable proxy)
+(We calculated mean cats per household by dividing by the number of electricity meters - should be a reasonable proxy)
 
 ```{r maxCats}
 
-t <- head(pc_district[, .(PostcodeDistrict, EstimatedCatPopulation, mean_Cats, nPostcodes, nElecMeters)][order(-mean_Cats)],10)
+t <- head(pc_district[, .(Region = GOR10NM, PostcodeDistrict, EstimatedCatPopulation, mean_Cats, nPostcodes, nElecMeters,nGasMeters)][order(-mean_Cats)],10)
 makeFlexTable(t, cap = "Top 10 postcode districts by number of cats per 'household'")
 ```
 SA63 is in south west [Wales](https://www.google.co.uk/maps/place/Clarbeston+Road+SA63/@51.8852685,-4.9147384,12z/data=!3m1!4b1!4m5!3m4!1s0x4868d5805b12efe5:0xca42ee4bc84a2f77!8m2!3d51.8900045!4d-4.8502065) while LL23 is on the edge of the [Snowdonia National Park](https://www.google.co.uk/maps/place/Bala+LL23/@52.8953768,-3.7752989,11z/data=!3m1!4b1!4m5!3m4!1s0x4865404ae1208f67:0x65a437b997c0dfb2!8m2!3d52.8825403!4d-3.6497989)....
 
-Do these places have some largish catteries but few houses? 8,233 is a lot of estimated cats.
+Do these places have some largish catteries but few houses?
+
+```{r histoCats, fig.cap = "Histogram of mean number of cats per dwelling"}
+ggplot2::ggplot(pc_district, aes(x = mean_Cats)) +
+  geom_histogram() +
+  labs(caption = "Postcode districts")
+
+summary(pc_district$mean_Cats)
+```
 
 ## More dwellings, more cats?
 
-Is there a correlation between estimated total cats and the number of dwellings (electricity meters)?
+Is there a correlation between estimated total cats and the number of dwellings (as measured by the number of electricity meters)?
 
 ```{r testTotalElecMeters}
 ggplot2::ggplot(pc_district[!is.na(GOR10NM)], aes(x = nElecMeters , y = EstimatedCatPopulation, 
                                  colour = GOR10NM)) +
+  scale_color_discrete(name = "UK `Region`") +
   geom_point() +
   geom_smooth()
 ```
 
-## More cats, more gas?
+## More cats, more energy?
+
+Clearly postcode districts with more dwellings will have higher energy use totals. So we need to compare the mean number of cats per dwelling with mean energy use per dwelling.
+
+This will need to accommodate some outliers in terms of mean number of cats as we saw above and potentially also in terms of mean energy.
+
+```{r meanEnergyOutliers}
+pc_district[, total_gas_kWh := ifelse(is.na(total_gas_kWh), 0, total_gas_kWh)]
+pc_district[, total_energy_kWh := total_gas_kWh + total_elec_kWh]
+pc_district[, mean_energy_kWh := total_energy_kWh/nElecMeters]
+
+summary(pc_district$mean_energy_kWh)
+t <- head(pc_district[, .(Region = GOR10NM, PostcodeDistrict, mean_energy_kWh, nPostcodes, nElecMeters,nGasMeters)][order(-mean_energy_kWh)],10)
+makeFlexTable(t, cap = "Top 10 postcode districts by mean energy per 'household'")
+```
 
 Is there a correlation between estimated cat ownership and total gas use?
 
-```{r testTotalGas}
+```{r meanCatsAndMeanEnergy}
+
+
 ggplot2::ggplot(pc_district[!is.na(GOR10NM)], 
-                aes(x = EstimatedCatPopulation, y = total_gas_kWh, colour = GOR10NM)) +
+                aes(x = mean_Cats, y = mean_energy_kWh, colour = GOR10NM)) +
   geom_smooth() +
   geom_point()
 ```
@@ -191,6 +220,15 @@ pc_district[, mean_energy_kWh := total_energy_kWh/nElecMeters]
 ggplot2::ggplot(pc_district[!is.na(GOR10NM)], aes(x = mean_Cats, y = mean_energy_kWh)) +
   geom_point()
 ```
+
+# Data Annexes
+
+Cats data
+
+```{r skimCats}
+skimr::skim(cats_DT)
+```
+
 
 # R packages used
 

@@ -37,6 +37,7 @@ pc_district_elec_dt <- postcodes_elec_dt[, .(elec_nPostcodes = .N,
                                            nElecMeters = sum(`Number of meters`, na.rm = TRUE)
                                            ), keyby = .(pcd_district)]
 nrow(pc_district_elec_dt)
+summary(pc_district_elec_dt)
 
 postcodes_gas_dt <- data.table::fread(paste0(dp, "beis/subnationalGas/Experimental_Gas_Postcode_Statistics_2015.csv"))
 postcodes_gas_dt[, pcd_district := data.table::tstrsplit(POSTCODE, " ", keep = c(1))]
@@ -44,6 +45,7 @@ pc_district_gas_dt <- postcodes_gas_dt[, .(gas_nPostcodes = .N,
                                            total_gas_kWh = sum(`Consumption (kWh)`, na.rm = TRUE),
                                            nGasMeters = sum(`Number of meters`, na.rm = TRUE)), keyby = .(pcd_district)]
 nrow(pc_district_gas_dt)
+summary(pc_district_gas_dt)
 
 setkey(pc_district_elec_dt, pcd_district)
 setkey(pc_district_gas_dt, pcd_district)
