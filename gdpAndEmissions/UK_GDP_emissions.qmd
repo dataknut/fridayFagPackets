@@ -1,5 +1,5 @@
 ---
-title: "GDP & emissions"
+title: "GDP & emissions - degrowthing or decoupling?"
 author: "Ben Anderson & Tom Rushby"
 date: "2022-10-06"
 date-modified: "`r Sys.time()`"
