@@ -113,6 +113,44 @@ ggplot2::ggplot(plotDT, aes(y = as.numeric(`GDP per capita, PPP (constant 2017 i
        y = "GDP per capita (constant 2017 $)")
 ```
 
+# Efficiency
+
+How about looking at efficency gC0\~2 per \$ GDP?
+
+Following <https://timjackson.org.uk/earth-vs-growth/> ...
+
+```{r}
+dt_abs[, `Emissions intensity` := `Annual CO2 emissions`/`GDP, PPP (constant 2017 international $)`*1000*1000]
+```
+
+```{r}
+entities_of_interest <- c("United Kingdom", "United States", "World", "New Zealand")
+
+plotDT <- dt_abs[Entity %in% entities_of_interest]
+
+ggplot2::ggplot(plotDT, aes(Year, `Emissions intensity`, colour = Entity)) +
+  geom_line() +
+  labs(y = "gC02 per $ GDP",
+       colour = "Country",
+       caption = "Data: https://ourworldindata.org")
+```
+
+For the UK, let's say c. 300g/\$ in 1995 reducing to 200g/\$ in 2010. So 15 years. To go from 200g/\$ to zero at the same rate would take approx. 30 years. So net-zero by 2050?
+
+Regardless of whether that aligns with science-based targets (i.e. absolute zero, sooner) ... what happens if the economy grows ... by say 2-3% per year? ... would that force total emissions up (fixed intensity) or result in efficiency gains (lower intensity)?
+
+```{r}
+dt_abs[, `Emissions intensity (consumption-based)` := `Annual consumption-based CO2 emissions`/`GDP, PPP (constant 2017 international $)`*1000*1000]
+```
+
+```{r}
+plotDT <- dt_abs[Entity %in% entities_of_interest]
+
+ggplot2::ggplot(plotDT, aes(Year, `Emissions intensity (consumption-based)`, colour = Entity)) +
+  geom_line() +
+  labs(y = "gC02 per $ GDP")
+```
+
 # Whom do we love?
 
 [quarto](https://quarto.org/)
