@@ -46,7 +46,8 @@ Who do we care about?
 
 ```{r}
 #| label: selectEntities
-entities_of_interest <- c("United Kingdom", "United States", "New Zealand", "China")
+entities_of_interest <- c("United Kingdom", "United States", "New Zealand", 
+                          "China")
 ```
 
 # Absolute GDP & emissions
@@ -99,6 +100,8 @@ First we'll try production emissions.
 #| fig-cap: GDP vs production emissions over time (selected entities)
 #| warning: false
 
+entities_of_interest <- c(entities_of_interest, "World")
+
 plotDT <- dt_pc[Entity %in% entities_of_interest]
 
 ggplot2::ggplot(plotDT, aes(y = as.numeric(`GDP per capita, PPP (constant 2017 international $)`), 
@@ -106,7 +109,6 @@ ggplot2::ggplot(plotDT, aes(y = as.numeric(`GDP per capita, PPP (constant 2017 i
                             colour = Entity,
                             alpha = Year)) +
   geom_point() +
-  theme(legend.position = "none") +
   labs(x = "Annual CO2 emissions per capita (production-based, T)",
        y = "GDP per capita (constant 2017 $)")
 
@@ -168,6 +170,7 @@ p <- ggplot2::ggplot(plotDT, aes(y = as.numeric(`GDP per capita, PPP (constant 2
                             colour = Entity,
                             alpha = Year)) +
   geom_point() +
+  theme(legend.position = "none") +
   labs(x = "Annual CO2 emissions per capita (consumption-based, T)",
        y = "GDP per capita (constant 2017 $)")
 
@@ -183,8 +186,6 @@ Following <https://timjackson.org.uk/earth-vs-growth/> ...
 ```{r}
 #| label: selectProduction
 dt_abs[, `Emissions intensity` := `Annual CO2 emissions`/`GDP, PPP (constant 2017 international $)`*1000*1000]
-
-entities_of_interest <- c("United Kingdom", "United States", "World", "New Zealand", "China")
 ```
 
 ```{r}
