@@ -18,6 +18,7 @@ editor: visual
 library(data.table)
 library(here)
 library(ggplot2)
+library(plotly)
 library(skimr)
 ```
 
@@ -53,8 +54,8 @@ entities_of_interest <- c("United Kingdom", "United States", "New Zealand", "Chi
 First we'll try production emissions.
 
 ```{r}
-#| label: fig-ukPlotProd
-#| fig-cap: UK GDP vs production emissions over time.
+#| label: fig-SelectedProdPlot
+#| fig-cap: GDP vs production emissions over time (selected entities).
 #| warning: false
 
 plotDT <- dt_abs[Entity %in% entities_of_interest]
@@ -73,8 +74,8 @@ Next we'll try consumption emissions.
 Note that 2020 consumption-based emissions data is missing so you don't see the downtick
 
 ```{r}
-#| label: fig-ukPlotCons
-#| fig-cap: UK GDP vs consumption emissions over time.
+#| label: fig-SelectedConsPlot
+#| fig-cap: GDP vs consumotion emissions over time (selected entities).
 #| warning: false
 plotDT <- dt_abs[Entity %in% entities_of_interest]
 
@@ -94,28 +95,52 @@ Since we'll be dividing everything pairwise by the same denominator, nothing muc
 First we'll try production emissions.
 
 ```{r}
-#| label: fig-ukPlotProdPcc
-#| fig-cap: UK GDP vs production emissions over time.
+#| label: fig-SelectedProdPlotPcc
+#| fig-cap: GDP vs production emissions over time (selected entities)
 #| warning: false
 
 plotDT <- dt_pc[Entity %in% entities_of_interest]
 
-ggplot2::ggplot(plotDT, aes(y = as.numeric(`GDP per capita, PPP (constant 2017 international $)`), 
+p <- ggplot2::ggplot(plotDT, aes(y = as.numeric(`GDP per capita, PPP (constant 2017 international $)`), 
                             x = as.numeric(`Annual CO2 emissions (per capita)`),
                             colour = Entity,
                             alpha = Year)) +
   geom_point() +
+  theme(legend.position = "none") +
   labs(x = "Annual CO2 emissions per capita (production-based, T)",
        y = "GDP per capita (constant 2017 $)")
+
+```
+
+Let's repeat that for all countries. Hover over the dots to see which is which #YMMV
+
+```{r}
+#| label: fig-ProdPlotPcc
+#| fig-cap: GDP vs production emissions over time (all entities)
+#| warning: false
+
+#plotDT <- dt_pc[Entity %in% entities_of_interest]
+plotDT <- dt_pc # for fun
+
+p <- ggplot2::ggplot(plotDT, aes(y = as.numeric(`GDP per capita, PPP (constant 2017 international $)`), 
+                            x = as.numeric(`Annual CO2 emissions (per capita)`),
+                            colour = Entity,
+                            alpha = Year)) +
+  geom_point() +
+  theme(legend.position = "none") +
+  labs(x = "Annual CO2 emissions per capita (production-based, T)",
+       y = "GDP per capita (constant 2017 $)")
+
+plotly::ggplotly(p)
 ```
 
 Next we'll try consumption emissions.
 
-Note that 2020 consumption-based emissions data is missing so you don't see the downtick
+Note that 2020 consumption-based emissions data is missing so you don't see the down-tick
 
 ```{r}
-#| label: fig-ukPlotConsPcc
-#| fig-cap: UK GDP vs consumption emissions over time.
+#| label: fig-SelectedConsPlotPcc
+#| fig-cap: GDP vs consumption emissions over time (selected entities).
 #| warning: false
 plotDT <- dt_pc[Entity %in% entities_of_interest]
 
@@ -126,6 +151,27 @@ ggplot2::ggplot(plotDT, aes(y = as.numeric(`GDP per capita, PPP (constant 2017 i
   geom_point() +
   labs(x = "Annual CO2 emissions per capita (consumption-based, T)",
        y = "GDP per capita (constant 2017 $)")
+```
+
+Let's repeat that for all countries. Hover over the dots to see which is which #YMMV
+
+```{r}
+#| label: fig-ConsPlotPcc
+#| fig-cap: GDP vs consumption emissions over time (all entities)
+#| warning: false
+
+#plotDT <- dt_pc[Entity %in% entities_of_interest]
+plotDT <- dt_pc # for fun
+
+p <- ggplot2::ggplot(plotDT, aes(y = as.numeric(`GDP per capita, PPP (constant 2017 international $)`), 
+                            x = as.numeric(`Annual consumption-based CO2 emissions (per capita)`),
+                            colour = Entity,
+                            alpha = Year)) +
+  geom_point() +
+  labs(x = "Annual CO2 emissions per capita (consumption-based, T)",
+       y = "GDP per capita (constant 2017 $)")
+
+plotly::ggplotly(p)
 ```
 
 # Efficiency
