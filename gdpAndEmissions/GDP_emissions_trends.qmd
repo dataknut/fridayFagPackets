@@ -21,6 +21,10 @@ library(ggplot2)
 library(skimr)
 ```
 
+# Friday fagpackets
+
+One of a [series](https://dataknut.github.io/fridayFagPackets/)...
+
 # What's all this about de-growth?
 
 \<sigh\>
