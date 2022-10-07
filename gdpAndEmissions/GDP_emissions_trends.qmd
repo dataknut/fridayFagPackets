@@ -101,7 +101,7 @@ First we'll try production emissions.
 
 plotDT <- dt_pc[Entity %in% entities_of_interest]
 
-p <- ggplot2::ggplot(plotDT, aes(y = as.numeric(`GDP per capita, PPP (constant 2017 international $)`), 
+ggplot2::ggplot(plotDT, aes(y = as.numeric(`GDP per capita, PPP (constant 2017 international $)`), 
                             x = as.numeric(`Annual CO2 emissions (per capita)`),
                             colour = Entity,
                             alpha = Year)) +
