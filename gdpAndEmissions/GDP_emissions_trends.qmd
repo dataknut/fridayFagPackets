@@ -37,7 +37,14 @@ dt_pc <- data.table::fread(here::here("data", "co2-emissions-and-gdp-per-capita.
 
 ```
 
-# UK: absolute GDP & emissions
+Who do we care about?
+
+```{r}
+#| label: selectEntities
+entities_of_interest <- c("United Kingdom", "United States", "New Zealand", "China")
+```
+
+# Absolute GDP & emissions
 
 First we'll try production emissions.
 
@@ -46,10 +53,11 @@ First we'll try production emissions.
 #| fig-cap: UK GDP vs production emissions over time.
 #| warning: false
 
-plotDT <- dt_abs[Entity == "United Kingdom"]
+plotDT <- dt_abs[Entity %in% entities_of_interest]
 
 ggplot2::ggplot(plotDT, aes(y = as.numeric(`GDP, PPP (constant 2017 international $)`)/1000000000, 
                             x = as.numeric(`Annual CO2 emissions`)/1000000,
+                            colour = Entity,
                             alpha = Year)) +
   geom_point() +
   labs(x = "Annual CO2 emissions (production-based, gT)",
@@ -64,19 +72,20 @@ Note that 2020 consumption-based emissions data is missing so you don't see the 
 #| label: fig-ukPlotCons
 #| fig-cap: UK GDP vs consumption emissions over time.
 #| warning: false
-plotDT <- dt_abs[Entity == "United Kingdom"]
+plotDT <- dt_abs[Entity %in% entities_of_interest]
 
 ggplot2::ggplot(plotDT, aes(y = as.numeric(`GDP, PPP (constant 2017 international $)`)/1000000000, 
                             x = as.numeric(`Annual consumption-based CO2 emissions`)/1000000,
+                            colour = Entity,
                             alpha = Year)) +
   geom_point() +
   labs(x = "Annual CO2 emissions (consumption-based, gT)",
        y = "GDP $bn (constant 2017 $)")
 ```
 
-# UK: per capita GDP & emissions
+# Per capita GDP & emissions
 
-Since we'll be dividing everything pairwise by the same denominator, nothing much should change...
+Since we'll be dividing everything pairwise by the same denominator, nothing much should change... but the plots should be much clearer as we've removed the affect of population size
 
 First we'll try production emissions.
 
@@ -85,10 +94,11 @@ First we'll try production emissions.
 #| fig-cap: UK GDP vs production emissions over time.
 #| warning: false
 
-plotDT <- dt_pc[Entity == "United Kingdom"]
+plotDT <- dt_pc[Entity %in% entities_of_interest]
 
 ggplot2::ggplot(plotDT, aes(y = as.numeric(`GDP per capita, PPP (constant 2017 international $)`), 
                             x = as.numeric(`Annual CO2 emissions (per capita)`),
+                            colour = Entity,
                             alpha = Year)) +
   geom_point() +
   labs(x = "Annual CO2 emissions per capita (production-based, T)",
@@ -103,10 +113,11 @@ Note that 2020 consumption-based emissions data is missing so you don't see the 
 #| label: fig-ukPlotConsPcc
 #| fig-cap: UK GDP vs consumption emissions over time.
 #| warning: false
-plotDT <- dt_pc[Entity == "United Kingdom"]
+plotDT <- dt_pc[Entity %in% entities_of_interest]
 
 ggplot2::ggplot(plotDT, aes(y = as.numeric(`GDP per capita, PPP (constant 2017 international $)`), 
                             x = as.numeric(`Annual consumption-based CO2 emissions (per capita)`),
+                            colour = Entity,
                             alpha = Year)) +
   geom_point() +
   labs(x = "Annual CO2 emissions per capita (consumption-based, T)",
@@ -115,17 +126,19 @@ ggplot2::ggplot(plotDT, aes(y = as.numeric(`GDP per capita, PPP (constant 2017 i
 
 # Efficiency
 
-How about looking at efficency gC0\~2 per \$ GDP?
+How about looking at efficency gC02e per \$ GDP?
 
 Following <https://timjackson.org.uk/earth-vs-growth/> ...
 
 ```{r}
+#| label: selectProduction
 dt_abs[, `Emissions intensity` := `Annual CO2 emissions`/`GDP, PPP (constant 2017 international $)`*1000*1000]
+
+entities_of_interest <- c("United Kingdom", "United States", "World", "New Zealand", "China")
 ```
 
 ```{r}
-entities_of_interest <- c("United Kingdom", "United States", "World", "New Zealand")
-
+#| label: selectAndPlotProduction
 plotDT <- dt_abs[Entity %in% entities_of_interest]
 
 ggplot2::ggplot(plotDT, aes(Year, `Emissions intensity`, colour = Entity)) +
@@ -137,13 +150,15 @@ ggplot2::ggplot(plotDT, aes(Year, `Emissions intensity`, colour = Entity)) +
 
 For the UK, let's say c. 300g/\$ in 1995 reducing to 200g/\$ in 2010. So 15 years. To go from 200g/\$ to zero at the same rate would take approx. 30 years. So net-zero by 2050?
 
-Regardless of whether that aligns with science-based targets (i.e. absolute zero, sooner) ... what happens if the economy grows ... by say 2-3% per year? ... would that force total emissions up (fixed intensity) or result in efficiency gains (lower intensity)?
+Regardless of whether that aligns with [science-based targets](https://sciencebasedtargets.org/how-it-works) (i.e. absolute zero by 2044) ... what happens if the economy grows ... by say 2-3% per year? ... would that force total emissions up (fixed intensity) or result in efficiency gains (lower intensity)?
 
 ```{r}
+#| label: selectCons
 dt_abs[, `Emissions intensity (consumption-based)` := `Annual consumption-based CO2 emissions`/`GDP, PPP (constant 2017 international $)`*1000*1000]
 ```
 
 ```{r}
+#| label: selectAndPlotConsumption
 plotDT <- dt_abs[Entity %in% entities_of_interest]
 
 ggplot2::ggplot(plotDT, aes(Year, `Emissions intensity (consumption-based)`, colour = Entity)) +
