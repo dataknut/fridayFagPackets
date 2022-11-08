@@ -162,7 +162,7 @@ plotly::ggplotly(p)
 
 Now let's have a look at all the countries but without the lines.
 
-Quite interesting, Qatar for example. Perfect place for a winter sport's World Cup. Trinidad and Tobago also worth a look.
+Quite interesting, Qatar for example. Perfect place for a winter sport's World Cup. Trinidad and Tobago also worth a look. Macao looks like the place to be?
 
 ```{r}
 #| label: fig-ProdPlotPcc
