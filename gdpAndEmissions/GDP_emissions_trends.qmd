@@ -17,6 +17,7 @@ editor: visual
 library(data.table)
 library(here)
 library(ggplot2)
+library(kableExtra)
 library(plotly)
 library(skimr)
 ```
@@ -62,13 +63,17 @@ Where do we care about?
 ```{r}
 #| label: selectEntities
 entities_of_interest <- c("United Kingdom", "United States", "New Zealand", 
-                          "China", "India", "Norway", "Nigeria")
+                          "China", "India", "Norway", "Kenya", "Jamaica")
 
 # check valid
-dt_pc[Entity %in% entities_of_interest, .(nObs = .N, 
+t <- dt_pc[Entity %in% entities_of_interest, .(nObs = .N, 
                                            meanAnnualPerCapTerr = mean(`Annual CO2 emissions (per capita)`, na.rm = TRUE),
                                            meanAnnualPerCapCons = mean(`Annual consumption-based CO2 emissions (per capita)`,na.rm = TRUE),
                                            meanAnnualGDPperCap = mean(`GDP per capita, PPP (constant 2017 international $)`,na.rm = TRUE)), keyby = .(Entity)]
+
+knitr::kable(t, digits = 2) %>%
+  kable_styling()
+
 ```
 
 # Absolute GDP & emissions
