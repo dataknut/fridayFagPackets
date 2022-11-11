@@ -6,6 +6,6 @@ The repo is auto-mirrored to https://github.com/dataknut/fridayFagPackets
 
  * docs - where we (usually) keep outputs - these are published on:
     * github [pages](https://dataknut.github.io/fridayFagPackets/)
-    * [energy.soton](https://energy.soton.ac.uk/friday-fag-packets/)
+    * and some of them are also at [energy.soton](https://energy.soton.ac.uk/friday-fag-packets/) in a more refined form :-)
  * data - where we keep (public) data we used
  * R - where we keep useful R code for use across the repo
