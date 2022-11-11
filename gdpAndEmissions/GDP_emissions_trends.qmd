@@ -123,7 +123,7 @@ Since we'll be dividing everything pairwise by the same denominator, nothing muc
 
 ## Production emissions
 
-First we'll try production emissions.
+First we'll try production emissions. @fig-SelectedProdPlotPcc shows change in this metric over time. Some interesting changes in direction (and otherwise)... basically they all need to be inverse U shaped, i.e. heading for y = 0.
 
 ```{r}
 #| label: fig-SelectedProdPlotPcc
@@ -190,7 +190,7 @@ plotly::ggplotly(p)
 
 ## Consumption emissions
 
-Next we'll try consumption emissions.
+Next we'll try consumption emissions. This is shown in @fig-SelectedConsPlotPcc.
 
 Note that 2020 consumption-based emissions data is missing so you don't see the down-tick.
 
