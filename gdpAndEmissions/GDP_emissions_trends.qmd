@@ -20,6 +20,8 @@ library(ggplot2)
 library(kableExtra)
 library(plotly)
 library(skimr)
+
+figCaption <- "Plots by: @dataknut & @tom_rushby\nData source: Our World In Data (https://ourworldindata.org/grapher/co2-emissions-and-gdp)"
 ```
 
 # Friday fagpackets
@@ -36,7 +38,7 @@ Updated after [another by \@JKSteinberger](https://twitter.com/JKSteinberger/sta
 
 # Data
 
-Downloaded from the awesome [OurWorldInData](https://ourworldindata.org/grapher/co2-emissions-and-gdp?country=~GBR):
+Downloaded from the awesome [OurWorldInData](https://ourworldindata.org/grapher/co2-emissions-and-gdp?country=~OWID_WRL):
 
 -   absolute and per capita GDP
 
@@ -95,7 +97,8 @@ ggplot2::ggplot(plotDT, aes(x = as.numeric(`GDP, PPP (constant 2017 internationa
                             alpha = Year)) +
   geom_point() +
   labs(y = "Annual CO2 emissions (production-based, gT)",
-       x = "GDP $bn (constant 2017 $)")
+       x = "GDP $bn (constant 2017 $)",
+       caption = figCaption)
 ```
 
 ## Absolute consumption emissions
@@ -114,7 +117,8 @@ ggplot2::ggplot(plotDT, aes(x = as.numeric(`GDP, PPP (constant 2017 internationa
                             alpha = Year)) +
   geom_point() +
   labs(y = "Annual CO2 emissions (consumption-based, gT)",
-       x = "GDP $bn (constant 2017 $)")
+       x = "GDP $bn (constant 2017 $)",
+       caption = figCaption)
 ```
 
 # Per capita GDP & emissions
@@ -141,7 +145,8 @@ p <-ggplot2::ggplot(plotDT, aes(x = as.numeric(`GDP per capita, PPP (constant 20
   geom_point() +
   geom_line() +
   labs(y = "Annual CO2 emissions per capita (production-based, T)",
-       x = "GDP per capita (constant 2017 $)")
+       x = "GDP per capita (constant 2017 $)",
+       caption = figCaption)
 
 p
 ```
@@ -159,7 +164,8 @@ p <-ggplot2::ggplot(plotDT, aes(x = as.numeric(`GDP per capita, PPP (constant 20
   geom_point() +
   geom_line() +
   labs(y = "Annual CO2 emissions per capita (production-based, T)",
-       x = "GDP per capita (constant 2017 $)")
+       x = "GDP per capita (constant 2017 $)",
+       caption = figCaption)
 
 plotly::ggplotly(p)
 ```
@@ -183,7 +189,8 @@ p <- ggplot2::ggplot(plotDT, aes(x = as.numeric(`GDP per capita, PPP (constant 2
   geom_point() +
   theme(legend.position = "none") +
   labs(y = "Annual CO2 emissions per capita (production-based, T)",
-       x = "GDP per capita (constant 2017 $)")
+       x = "GDP per capita (constant 2017 $)",
+       caption = figCaption)
 
 plotly::ggplotly(p)
 ```
@@ -207,7 +214,8 @@ ggplot2::ggplot(plotDT, aes(x = as.numeric(`GDP per capita, PPP (constant 2017 i
   geom_point() +
   geom_line() +
   labs(y = "Annual CO2 emissions per capita (consumption-based, T)",
-       x = "GDP per capita (constant 2017 $)")
+       x = "GDP per capita (constant 2017 $)",
+       caption = figCaption)
 ```
 
 Let's repeat that for all countries. Hover over the dots to see which is which #YMMV.
@@ -229,7 +237,8 @@ p <- ggplot2::ggplot(plotDT, aes(x = as.numeric(`GDP per capita, PPP (constant 2
   geom_point() +
   theme(legend.position = "none") +
   labs(y = "Annual CO2 emissions per capita (consumption-based, T)",
-       x = "GDP per capita (constant 2017 $)")
+       x = "GDP per capita (constant 2017 $)",
+       caption = figCaption)
 
 plotly::ggplotly(p)
 ```
@@ -253,7 +262,7 @@ ggplot2::ggplot(plotDT, aes(Year, `Emissions intensity (production-based)`, colo
   geom_line() +
   labs(y = "gC02 per $ GDP",
        colour = "Country",
-       caption = "Data: https://ourworldindata.org")
+       caption = figCaption)
 ```
 
 For the UK, let's say c. 300g/\$ in 1995 reducing to 200g/\$ in 2010. So 15 years. To go from 200g/\$ to zero at the same rate would take approx. 30 years. So net-zero by 2050?
@@ -271,7 +280,8 @@ plotDT <- dt_abs[Entity %in% entities_of_interest]
 
 ggplot2::ggplot(plotDT, aes(Year, `Emissions intensity (consumption-based)`, colour = Entity)) +
   geom_line() +
-  labs(y = "gC02 per $ GDP")
+  labs(y = "gC02 per $ GDP",
+       caption = figCaption)
 ```
 
 # Whom do we love?
