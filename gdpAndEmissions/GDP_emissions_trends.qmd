@@ -64,7 +64,7 @@ Where do we care about?
 
 ```{r}
 #| label: selectEntities
-entities_of_interest <- c("United Kingdom", "United States", "New Zealand", 
+entities_of_interest <- c("United Kingdom", "United States", "New Zealand", "Australia",
                           "China", "India", "Norway", "Kenya", "Jamaica")
 
 # check valid
