@@ -2,7 +2,7 @@
 
 A repo for our [fridayFagPacket](https://dataknut.github.io/fridayFagPackets/) data notes (numbers that could have been done on the back of one and should probably come with a similar health warning).
 
-The repo is auto-mirrored to https://github.com/dataknut/fridayFagPackets
+The repo is auto-mirrored from https://git.soton.ac.uk/SERG/fridayFagPackets (where we do the work) to https://github.com/dataknut/fridayFagPackets
 
  * docs - where we (usually) keep outputs - these are published on:
     * github [pages](https://dataknut.github.io/fridayFagPackets/)
