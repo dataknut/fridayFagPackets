@@ -1,6 +1,6 @@
 # fridayFagPackets
 
-A repo for our [fridayFagPacket](https://energy.soton.ac.uk/friday-fag-packets/) data notes (numbers that could have been done on the back of one and should probably come with a similar health warning).
+A repo for our [fridayFagPacket](https://dataknut.github.io/fridayFagPackets/) data notes (numbers that could have been done on the back of one and should probably come with a similar health warning).
 
 The repo is auto-mirrored to https://github.com/dataknut/fridayFagPackets
 

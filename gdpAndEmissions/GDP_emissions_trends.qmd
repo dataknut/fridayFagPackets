@@ -47,7 +47,7 @@ Downloaded from the awesome [OurWorldInData](https://ourworldindata.org/grapher/
 
 ```{r}
 #| label: loasdData
-
+# fix
 dt_abs <- data.table::fread(here::here("data", "co2-emissions-and-gdp.csv"))
 dt_pc <- data.table::fread(here::here("data", "co2-emissions-and-gdp-per-capita.csv"))
 
