@@ -1,8 +1,7 @@
 ---
 title: "GDP & emissions - degrowthing or decoupling?"
 author: "Ben Anderson & Tom Rushby"
-date: "2022-10-06"
-date-modified: "`r Sys.time()`"
+date: "`r Sys.time()`"
 format: 
   html:
     self-contained: true
@@ -30,9 +29,9 @@ One of a [series](https://dataknut.github.io/fridayFagPackets/)...
 
 \<sigh\>
 
-A follow-up to https://twitter.com/tom_rushby/status/1577752402798821410
+A follow-up to [\@tom_rushby's tweet](https://twitter.com/tom_rushby/status/1577752402798821410)
 
-Updated after https://twitter.com/JKSteinberger/status/1587562447795167233
+Updated after [another by \@JKSteinberger](https://twitter.com/JKSteinberger/status/1587562447795167233)
 
 # Data
 
